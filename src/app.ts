@@ -50,7 +50,7 @@ export class App{
             res.status(200).json({ status: "Ahoé bien opérationnelle" });
         });
 
-
+        
         // this.app.use("/api/auth", AuthRoutes);
         this.app.use("/api-docs", swaggerRoute);
     }
