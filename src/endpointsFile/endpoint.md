@@ -1,583 +1,412 @@
-// ===========================================
-// 1. AUTHENTIFICATION ET UTILISATEURS
-// ===========================================
-
-// 1.1 Authentification de base
-POST   /api/auth/register                    // Inscription utilisateur
-POST   /api/auth/login                       // Connexion
-POST   /api/auth/logout                      // Déconnexion  
-POST   /api/auth/refresh                     // Refresh token
-POST   /api/auth/forgot-password             // Mot de passe oublié
-POST   /api/auth/reset-password              // Reset mot de passe
-POST   /api/auth/verify-email                // Vérification email
-POST   /api/auth/verify-phone                // Vérification téléphone
-
-// 1.2 Profils utilisateurs
-GET    /api/users/profile                    // Profil utilisateur connecté
-PUT    /api/users/profile                    // Mise à jour profil
-POST   /api/users/avatar                     // Upload avatar
-GET    /api/users/:id                        // Profil public utilisateur
-POST   /api/users/change-password            // Changer mot de passe
-
-// 1.3 Rôles et vérifications
-GET    /api/users/roles                      // Rôles utilisateur connecté
-POST   /api/users/roles                      // Demander un nouveau rôle
-POST   /api/users/verify-documents           // Soumettre documents vérification
-GET    /api/users/verification-status        // Status vérification
-
-// ===========================================
-// 2. CATÉGORIES ET PROPRIÉTÉS
-// ===========================================
-
-// 2.1 Catégories
-GET    /api/categories                       // Liste catégories actives
-GET    /api/categories/:id                   // Détails catégorie
-
-// 2.2 Gestion propriétés (Propriétaires)
-POST   /api/properties                       // Créer propriété
-GET    /api/properties/my-properties         // Mes propriétés
-GET    /api/properties/:id                   // Détails propriété
-PUT    /api/properties/:id                   // Modifier propriété
-DELETE /api/properties/:id                   // Supprimer propriété
-PUT    /api/properties/:id/status            // Changer status (draft->active)
-
-// 2.3 Médias propriétés
-POST   /api/properties/:id/media             // Upload photos/vidéos
-PUT    /api/properties/:id/media/:mediaId    // Modifier média
-DELETE /api/properties/:id/media/:mediaId    // Supprimer média
-PUT    /api/properties/:id/media/:mediaId/primary // Définir photo principale
-
-// 2.4 Tarification
-POST   /api/properties/:id/pricing           // Définir tarification
-PUT    /api/properties/:id/pricing/:pricingId // Modifier prix
-GET    /api/properties/:id/pricing           // Obtenir tarification
-
-// 2.5 Disponibilités
-POST   /api/properties/:id/availability      // Définir disponibilités
-PUT    /api/properties/:id/availability/:availId // Modifier disponibilité
-DELETE /api/properties/:id/availability/:availId // Supprimer période
-GET    /api/properties/:id/availability      // Calendrier disponibilités
-
-// ===========================================
-// 3. RECHERCHE ET DÉCOUVERTE
-// ===========================================
-
-// 3.1 Recherche de base
-GET    /api/properties/search               // Recherche propriétés avec filtres
-GET    /api/properties/featured             // Propriétés mises en avant
-GET    /api/properties/recent               // Propriétés récentes
-GET    /api/properties/popular              // Propriétés populaires
-
-// 3.2 Détails et vues
-GET    /api/properties/:slug                // Détails propriété (public)
-POST   /api/properties/:id/view             // Compteur de vues
-GET    /api/properties/:id/similar          // Propriétés similaires
-
-// 3.3 Localisation
-GET    /api/locations/cities                // Villes disponibles
-GET    /api/locations/districts/:city       // Quartiers par ville
-GET    /api/locations/search               // Recherche auto-completion lieux
-
-// ===========================================
-// 4. FAVORIS ET RECHERCHES SAUVÉES
-// ===========================================
-
-// 4.1 Favoris
-GET    /api/favorites                       // Mes favoris
-POST   /api/favorites/:propertyId           // Ajouter aux favoris
-DELETE /api/favorites/:propertyId           // Retirer des favoris
-PUT    /api/favorites/:propertyId           // Modifier notes favoris
-
-// 4.2 Recherches sauvegardées  
-GET    /api/saved-searches                  // Mes recherches sauvées
-POST   /api/saved-searches                  // Sauver recherche
-PUT    /api/saved-searches/:id              // Modifier recherche sauvée
-DELETE /api/saved-searches/:id              // Supprimer recherche sauvée
-
-// ===========================================
-// 5. COMMUNICATION DE BASE
-// ===========================================
-
-// 5.1 Conversations
-GET    /api/conversations                   // Mes conversations
-POST   /api/conversations                   // Créer conversation
-GET    /api/conversations/:id               // Messages conversation
-PUT    /api/conversations/:id/read          // Marquer comme lu
-
-// 5.2 Messages
-POST   /api/conversations/:id/messages      // Envoyer message
-POST   /api/messages/:id/read               // Marquer message lu
-PUT    /api/messages/:id                    // Modifier message
-DELETE /api/messages/:id                    // Supprimer message
-
-// ===========================================
-// 6. RÉSERVATIONS DE BASE
-// ===========================================
-
-// 6.1 Demandes de réservation
-POST   /api/booking-requests                // Créer demande
-GET    /api/booking-requests                // Mes demandes (tenant/landlord)
-GET    /api/booking-requests/:id            // Détails demande
-PUT    /api/booking-requests/:id/respond    // Répondre à demande (accept/reject)
-PUT    /api/booking-requests/:id/cancel     // Annuler demande
-// 7.4 Paiements spécifiques
-POST   /api/payments/rent                   // Paiement loyer
-POST   /api/payments/deposit                // Paiement caution
-POST   /api/payments/mobile-money           // Paiement Mobile Money
-GET    /api/payments/:id/status             // Status paiement
-GET    /api/payments/:id/receipt            // Reçu de paiement
-
-// ===========================================
-// 8. ÉVALUATIONS ET AVIS
-// ===========================================
-
-// 8.1 Avis de base
-GET    /api/reviews/property/:propertyId    // Avis d'une propriété
-GET    /api/reviews/user/:userId            // Avis d'un utilisateur
-POST   /api/reviews                         // Créer avis
-PUT    /api/reviews/:id                     // Modifier avis
-DELETE /api/reviews/:id                     // Supprimer avis
-
-// 8.2 Modération avis
-GET    /api/reviews/pending                 // Avis en attente (admin)
-PUT    /api/reviews/:id/moderate            // Modérer avis
-POST   /api/reviews/:id/report              // Signaler avis
-POST   /api/reviews/:id/helpful             // Vote utilité avis
-
-// 8.3 Réponses aux avis
-POST   /api/reviews/:id/response            // Répondre à avis
-PUT    /api/reviews/:id/response            // Modifier réponse
-DELETE /api/reviews/:id/response            // Supprimer réponse
-
-// ===========================================
-// 9. NOTIFICATIONS
-// ===========================================
-
-// 9.1 Gestion notifications
-GET    /api/notifications                   // Mes notifications
-PUT    /api/notifications/:id/read          // Marquer notification lue
-PUT    /api/notifications/read-all          // Marquer toutes lues
-DELETE /api/notifications/:id               // Supprimer notification
-GET    /api/notifications/unread-count      // Compteur non lues
-
-// 9.2 Préférences notifications
-GET    /api/notifications/preferences       // Mes préférences
-PUT    /api/notifications/preferences       // Modifier préférences
-POST   /api/notifications/test              // Test notification
-
-// ===========================================
-// 10. ANALYTICS PROPRIÉTAIRES
-// ===========================================
-
-// 10.1 Dashboard propriétaire
-GET    /api/analytics/dashboard             // Dashboard principal
-GET    /api/analytics/properties            // Stats par propriété
-GET    /api/analytics/bookings              // Stats réservations
-GET    /api/analytics/revenue               // Stats revenus
-GET    /api/analytics/reviews               // Stats avis reçus
-
-// 10.2 Rapports
-GET    /api/reports/monthly                 // Rapport mensuel
-GET    /api/reports/yearly                  // Rapport annuel
-GET    /api/reports/tax                     // Rapport fiscal
-POST   /api/reports/export                  // Export données
-
-
-// ===========================================
-// 11. ADMINISTRATION AVANCÉE
-// ===========================================
-
-// 11.1 Gestion utilisateurs (Admin)
-GET    /api/admin/users                     // Liste utilisateurs
-GET    /api/admin/users/:id                 // Détails utilisateur
-PUT    /api/admin/users/:id/status          // Changer status utilisateur
-POST   /api/admin/users/:id/verify          // Vérifier utilisateur
-GET    /api/admin/users/verification-queue  // Queue vérifications
-
-// 11.2 Gestion propriétés (Admin)
-GET    /api/admin/properties                // Toutes les propriétés
-PUT    /api/admin/properties/:id/moderate   // Modérer propriété
-GET    /api/admin/properties/pending        // Propriétés en attente
-POST   /api/admin/properties/:id/feature    // Mettre en avant
-
-// 11.3 Gestion financière (Admin)
-GET    /api/admin/transactions              // Toutes transactions
-GET    /api/admin/revenue                   // Revenus plateforme
-GET    /api/admin/commissions               // Commissions générées
-POST   /api/admin/refunds/:id               // Autoriser remboursement
-
-// 11.4 Paramètres système
-GET    /api/admin/settings                  // Paramètres système
-PUT    /api/admin/settings/:key             // Modifier paramètre
-GET    /api/admin/logs                      // Logs système
-GET    /api/admin/stats                     // Statistiques globales
-
-// ===========================================
-// 12. SERVICES AVANCÉS
-// ===========================================
-
-// 12.1 Services partenaires
-GET    /api/services/movers                 // Déménageurs partenaires
-POST   /api/services/movers/request         // Demande déménagement
-GET    /api/services/cleaning               // Services nettoyage
-POST   /api/services/cleaning/book          // Réserver nettoyage
-GET    /api/services/insurance              // Assurances disponibles
-POST   /api/services/insurance/quote        // Devis assurance
-
-// 12.2 Inspection propriétés
-POST   /api/inspections/request             // Demander inspection
-GET    /api/inspections/:id                 // Rapport inspection
-PUT    /api/inspections/:id/schedule        // Planifier inspection
-GET    /api/inspections/history             // Historique inspections
-
-// 12.3 Maintenance
-POST   /api/maintenance/request             // Demande maintenance
-GET    /api/maintenance                     // Mes demandes maintenance
-PUT    /api/maintenance/:id/status          // Modifier status
-POST   /api/maintenance/:id/quote           // Ajouter devis
-
-// ===========================================
-// 13. IA ET FONCTIONNALITÉS INTELLIGENTES
-// ===========================================
-
-// 13.1 Recommandations IA
-GET    /api/ai/recommendations/:userId      // Recommandations personnalisées
-POST   /api/ai/price-suggestion             // Suggestion prix propriété
-GET    /api/ai/market-analysis/:area        // Analyse marché zone
-POST   /api/ai/description-enhance          // Améliorer description IA
-
-// 13.2 Analyse d'images
-POST   /api/ai/image-analysis               // Analyse qualité photos
-POST   /api/ai/object-detection             // Détection objets dans photos
-POST   /api/ai/image-enhancement            // Amélioration photos
-
-// 13.3 Détection de fraude
-POST   /api/ai/fraud-check                  // Vérification fraude
-GET    /api/ai/risk-score/:userId           // Score de risque utilisateur
-POST   /api/ai/content-moderation           // Modération contenu automatique
-
-// ===========================================
-// 14. API PUBLIQUE ET WEBHOOKS
-// ===========================================
-
-// 14.1 API publique
-GET    /api/public/properties               // Propriétés publiques
-GET    /api/public/locations                // Données localisation
-GET    /api/public/stats                    // Stats publiques plateforme
-GET    /api/public/categories               // Catégories publiques
-
-// 14.2 Webhooks
-POST   /api/webhooks/payment-success        // Callback paiement réussi
-POST   /api/webhooks/payment-failed         // Callback paiement échoué
-POST   /api/webhooks/mobile-money           // Callback Mobile Money
-POST   /api/webhooks/sms-delivery           // Callback SMS
-
-// 14.3 Intégrations tierces
-GET    /api/integrations/calendar           // Synchronisation calendrier
-POST   /api/integrations/social-media       // Partage réseaux sociaux
-GET    /api/integrations/weather            // Données météo par zone
-POST   /api/integrations/maps               // Intégration cartes
-
-// ===========================================
-// 15. RECHERCHE ET FILTRES AVANCÉS
-// ===========================================
-
-// 15.1 Recherche géographique
-POST   /api/search/geo                      // Recherche par coordonnées
-GET    /api/search/nearby                   // Propriétés à proximité
-POST   /api/search/route                    // Propriétés sur trajet
-GET    /api/search/polygon                  // Recherche dans zone
-
-// 15.2 Recherche intelligente
-POST   /api/search/semantic                 // Recherche sémantique
-GET    /api/search/suggestions              // Suggestions recherche
-POST   /api/search/similar                  // Propriétés similaires
-GET    /api/search/trending                 // Recherches tendances
-
-// 15.3 Filtres avancés
-GET    /api/search/filters                  // Tous filtres disponibles
-POST   /api/search/custom-filter            // Créer filtre personnalisé
-GET    /api/search/price-range              // Fourchettes prix par zone
-GET    /api/search/amenities-popular        // Équipements les plus demandés
-
-// ===========================================
-// 16. MOBILE ET FONCTIONNALITÉS NATIVES
-// ===========================================
-
-// 16.1 Géolocalisation mobile
-POST   /api/mobile/location                 // Enregistrer position
-GET    /api/mobile/nearby-properties        // Propriétés à proximité GPS
-POST   /api/mobile/check-in                 // Check-in géolocalisé
-GET    /api/mobile/directions               // Itinéraires vers propriété
-
-// 16.2 Notifications push
-POST   /api/mobile/register-device          // Enregistrer device push
-PUT    /api/mobile/update-token             // Mettre à jour token
-POST   /api/mobile/send-push                // Envoyer notification
-GET    /api/mobile/push-history             // Historique push
-
-// 16.3 Fonctionnalités hors ligne
-GET    /api/mobile/offline-data             // Données pour mode offline
-POST   /api/mobile/sync                     // Synchronisation données
-GET    /api/mobile/cached-searches          // Recherches en cache
-
-// ===========================================
-// 17. SUPPORT ET ASSISTANCE
-// ===========================================
-
-// 17.1 Support client
-POST   /api/support/tickets                 // Créer ticket support
-GET    /api/support/tickets                 // Mes tickets
-GET    /api/support/tickets/:id             // Détails ticket
-PUT    /api/support/tickets/:id             // Mise à jour ticket
-POST   /api/support/tickets/:id/message     // Ajouter message ticket
-
-// 17.2 Chat en direct
-POST   /api/support/chat/start              // Démarrer chat
-GET    /api/support/chat/:sessionId         // Messages chat
-POST   /api/support/chat/:sessionId/message // Envoyer message chat
-PUT    /api/support/chat/:sessionId/end     // Terminer chat
-
-// 17.3 FAQ et aide
-GET    /api/support/faq                     // Questions fréquentes
-GET    /api/support/faq/categories          // Catégories FAQ
-GET    /api/support/articles                // Articles d'aide
-POST   /api/support/feedback                // Feedback utilisateur
-
-// ===========================================
-// 18. EXPORTS ET RAPPORTS
-// ===========================================
-
-// 18.1 Exports utilisateur
-GET    /api/exports/my-data                 // Export données personnelles
-POST   /api/exports/bookings                // Export réservations
-POST   /api/exports/transactions            // Export transactions
-POST   /api/exports/properties              // Export mes propriétés
-
-// 18.2 Rapports avancés
-POST   /api/reports/custom                  // Rapport personnalisé
-GET    /api/reports/templates               // Modèles de rapports
-POST   /api/reports/schedule                // Programmer rapport
-GET    /api/reports/scheduled               // Rapports programmés
-
-// ===========================================
-// 19. GESTION DES MÉDIAS AVANCÉE
-// ===========================================
-
-// 19.1 Upload et traitement
-POST   /api/media/upload                    // Upload avec traitement
-POST   /api/media/bulk-upload               // Upload multiple
-GET    /api/media/:id/variants              // Variantes d'image
-POST   /api/media/compress                  // Compression images
-POST   /api/media/watermark                 // Ajout filigrane
-
-// 19.2 Galeries et albums
-POST   /api/media/albums                    // Créer album
-GET    /api/media/albums/:id                // Contenu album
-PUT    /api/media/albums/:id/reorder        // Réorganiser album
-POST   /api/media/360-tours                 // Upload visite 360°
-
-// ===========================================
-// 20. SÉCURITÉ ET AUDIT
-// ===========================================
-
-// 20.1 Audit et logs
-GET    /api/audit/logs                      // Logs d'audit
-GET    /api/audit/user/:userId              // Activité utilisateur
-POST   /api/audit/report                    // Rapport d'incident
-GET    /api/audit/suspicious-activity       // Activités suspectes
-
-// 20.2 Sécurité utilisateur
-GET    /api/security/sessions               // Sessions actives
-DELETE /api/security/sessions/:id           // Fermer session
-POST   /api/security/2fa/enable             // Activer 2FA
-POST   /api/security/2fa/verify             // Vérifier 2FA
-GET    /api/security/login-history          // Historique connexions
-
-// 20.3 Signalements et modération
-POST   /api/reports/user                    // Signaler utilisateur
-POST   /api/reports/property                // Signaler propriété
-GET    /api/reports/my-reports              // Mes signalements
-PUT    /api/reports/:id/status              // Mise à jour signalement
-```
+# **API REST - Plateforme de Location Immobilière**
+
+## ** Sommaire**
+
+1. [Authentification et utilisateurs](#1-authentification-et-utilisateurs)
+2. [Catégories et propriétés](#2-catégories-et-propriétés)
+3. [Recherche et découverte](#3-recherche-et-découverte)
+4. [Favoris et recherches sauvées](#4-favoris-et-recherches-sauvées)
+5. [Communication de base](#5-communication-de-base)
+6. [Réservations de base](#6-réservations-de-base)
+7. [Paiements spécifiques](#7-paiements-spécifiques)
+8. [Évaluations et avis](#8-évaluations-et-avis)
+9. [Notifications](#9-notifications)
+10. [Analytics propriétaires](#10-analytics-propriétaires)
+11. [Administration avancée](#11-administration-avancée)
+12. [Services avancés](#12-services-avancés)
+13. [IA et fonctionnalités intelligentes](#13-ia-et-fonctionnalités-intelligentes)
+14. [API publique et webhooks](#14-api-publique-et-webhooks)
+15. [Recherche et filtres avancés](#15-recherche-et-filtres-avancés)
+16. [Mobile et fonctionnalités natives](#16-mobile-et-fonctionnalités-natives)
+17. [Support et assistance](#17-support-et-assistance)
+18. [Exports et rapports](#18-exports-et-rapports)
+19. [Gestion des médias avancée](#19-gestion-des-médias-avancée)
+20. [Sécurité et audit](#20-sécurité-et-audit)
+21. [Priorités de développement](#priorités-de-développement-détaillées)
+22. [Structure backend recommandée](#🏗️-structure-backend-recommandée)
+
+---
+
+## **1. AUTHENTIFICATION ET UTILISATEURS**
+
+### **1.1 Authentification de base**
+
+| Méthode | Endpoint                    | Description                |
+| ------- | --------------------------- | -------------------------- |
+| POST    | `/api/auth/register`        | Inscription utilisateur    |
+| POST    | `/api/auth/login`           | Connexion                  |
+| POST    | `/api/auth/logout`          | Déconnexion                |
+| POST    | `/api/auth/refresh`         | Refresh token              |
+| POST    | `/api/auth/forgot-password` | Mot de passe oublié        |
+| POST    | `/api/auth/reset-password`  | Réinitialiser mot de passe |
+| POST    | `/api/auth/verify-email`    | Vérification email         |
+| POST    | `/api/auth/verify-phone`    | Vérification téléphone     |
+
+### **1.2 Profils utilisateurs**
+
+| Méthode | Endpoint                     | Description                 |
+| ------- | ---------------------------- | --------------------------- |
+| GET     | `/api/users/profile`         | Profil utilisateur connecté |
+| PUT     | `/api/users/profile`         | Mise à jour profil          |
+| POST    | `/api/users/avatar`          | Upload avatar               |
+| GET     | `/api/users/:id`             | Profil public utilisateur   |
+| POST    | `/api/users/change-password` | Changer mot de passe        |
+
+### **1.3 Rôles et vérifications**
+
+| Méthode | Endpoint                         | Description                |
+| ------- | -------------------------------- | -------------------------- |
+| GET     | `/api/users/roles`               | Rôles utilisateur connecté |
+| POST    | `/api/users/roles`               | Demander un nouveau rôle   |
+| POST    | `/api/users/verify-documents`    | Soumettre documents        |
+| GET     | `/api/users/verification-status` | Statut vérification        |
+
+---
+
+## **2. CATÉGORIES ET PROPRIÉTÉS**
+
+### **2.1 Catégories**
+
+| Méthode | Endpoint              | Description              |
+| ------- | --------------------- | ------------------------ |
+| GET     | `/api/categories`     | Liste catégories actives |
+| GET     | `/api/categories/:id` | Détails catégorie        |
+
+### **2.2 Gestion des propriétés**
+
+| Méthode | Endpoint                        | Description                     |
+| ------- | ------------------------------- | ------------------------------- |
+| POST    | `/api/properties`               | Créer propriété                 |
+| GET     | `/api/properties/my-properties` | Mes propriétés                  |
+| GET     | `/api/properties/:id`           | Détails propriété               |
+| PUT     | `/api/properties/:id`           | Modifier propriété              |
+| DELETE  | `/api/properties/:id`           | Supprimer propriété             |
+| PUT     | `/api/properties/:id/status`    | Changer statut (draft → active) |
+
+### **2.3 Médias propriétés**
+
+| Méthode | Endpoint                                     | Description              |
+| ------- | -------------------------------------------- | ------------------------ |
+| POST    | `/api/properties/:id/media`                  | Upload photos/vidéos     |
+| PUT     | `/api/properties/:id/media/:mediaId`         | Modifier média           |
+| DELETE  | `/api/properties/:id/media/:mediaId`         | Supprimer média          |
+| PUT     | `/api/properties/:id/media/:mediaId/primary` | Définir photo principale |
+
+### **2.4 Tarification**
+
+| Méthode | Endpoint                                 | Description          |
+| ------- | ---------------------------------------- | -------------------- |
+| POST    | `/api/properties/:id/pricing`            | Définir tarification |
+| PUT     | `/api/properties/:id/pricing/:pricingId` | Modifier prix        |
+| GET     | `/api/properties/:id/pricing`            | Obtenir tarification |
+
+### **2.5 Disponibilités**
+
+| Méthode | Endpoint                                    | Description                    |
+| ------- | ------------------------------------------- | ------------------------------ |
+| POST    | `/api/properties/:id/availability`          | Définir disponibilités         |
+| PUT     | `/api/properties/:id/availability/:availId` | Modifier disponibilité         |
+| DELETE  | `/api/properties/:id/availability/:availId` | Supprimer période              |
+| GET     | `/api/properties/:id/availability`          | Voir calendrier disponibilités |
+
+---
+
+## **3. RECHERCHE ET DÉCOUVERTE**
+
+| Méthode | Endpoint                   | Description                |
+| ------- | -------------------------- | -------------------------- |
+| GET     | `/api/properties/search`   | Recherche avec filtres     |
+| GET     | `/api/properties/featured` | Propriétés mises en avant  |
+| GET     | `/api/properties/recent`   | Propriétés récentes        |
+| GET     | `/api/properties/popular`  | Propriétés populaires      |
+| GET     | `/api/properties/:slug`    | Détails propriété publique |
+| POST    | `/api/properties/:id/view` | Compteur de vues           |
+
+---
+
+## **4. FAVORIS ET RECHERCHES SAUVÉES**
+
+| Méthode | Endpoint                     | Description                 |
+| ------- | ---------------------------- | --------------------------- |
+| GET     | `/api/favorites`             | Mes favoris                 |
+| POST    | `/api/favorites/:propertyId` | Ajouter aux favoris         |
+| DELETE  | `/api/favorites/:propertyId` | Retirer des favoris         |
+| GET     | `/api/saved-searches`        | Mes recherches sauvegardées |
+
+---
+
+## **5. COMMUNICATION**
+
+| Méthode | Endpoint                          | Description             |
+| ------- | --------------------------------- | ----------------------- |
+| GET     | `/api/conversations`              | Liste des conversations |
+| POST    | `/api/conversations`              | Créer conversation      |
+| GET     | `/api/conversations/:id`          | Détails conversation    |
+| POST    | `/api/conversations/:id/messages` | Envoyer message         |
+
+---
+
+## **6. RÉSERVATIONS DE BASE**
+
+| Méthode | Endpoint                            | Description              |
+| ------- | ----------------------------------- | ------------------------ |
+| POST    | `/api/booking-requests`             | Créer demande            |
+| GET     | `/api/booking-requests`             | Mes demandes             |
+| PUT     | `/api/booking-requests/:id/respond` | Répondre (accept/reject) |
+| PUT     | `/api/booking-requests/:id/cancel`  | Annuler demande          |
+
+---
+
+## **7. PAIEMENTS**
+
+| Méthode | Endpoint                     | Description           |
+| ------- | ---------------------------- | --------------------- |
+| POST    | `/api/payments/rent`         | Paiement loyer        |
+| POST    | `/api/payments/deposit`      | Paiement caution      |
+| POST    | `/api/payments/mobile-money` | Paiement Mobile Money |
+| GET     | `/api/payments/:id/status`   | Statut paiement       |
+| GET     | `/api/payments/:id/receipt`  | Reçu paiement         |
+
+---
+
+## **8. ÉVALUATIONS ET AVIS**
+
+| Méthode | Endpoint                            | Description      |
+| ------- | ----------------------------------- | ---------------- |
+| GET     | `/api/reviews/property/:propertyId` | Avis propriété   |
+| GET     | `/api/reviews/user/:userId`         | Avis utilisateur |
+| POST    | `/api/reviews`                      | Créer avis       |
+| PUT     | `/api/reviews/:id`                  | Modifier avis    |
+| DELETE  | `/api/reviews/:id`                  | Supprimer avis   |
+
+---
+
+## **9. NOTIFICATIONS**
+
+| Méthode | Endpoint                          | Description               |
+| ------- | --------------------------------- | ------------------------- |
+| GET     | `/api/notifications`              | Mes notifications         |
+| PUT     | `/api/notifications/read-all`     | Marquer toutes comme lues |
+| GET     | `/api/notifications/unread-count` | Compteur non lues         |
+| GET     | `/api/notifications/preferences`  | Préférences notifications |
+
+---
+
+## **10. ANALYTICS PROPRIÉTAIRES**
+
+| Méthode | Endpoint                   | Description          |
+| ------- | -------------------------- | -------------------- |
+| GET     | `/api/analytics/dashboard` | Dashboard principal  |
+| GET     | `/api/analytics/revenue`   | Statistiques revenus |
+| GET     | `/api/reports/monthly`     | Rapport mensuel      |
+| GET     | `/api/reports/tax`         | Rapport fiscal       |
+
+---
+
+## **11. ADMINISTRATION**
+
+| Méthode | Endpoint                  | Description           |
+| ------- | ------------------------- | --------------------- |
+| GET     | `/api/admin/users`        | Liste utilisateurs    |
+| GET     | `/api/admin/properties`   | Toutes les propriétés |
+| GET     | `/api/admin/transactions` | Transactions          |
+| GET     | `/api/admin/settings`     | Paramètres système    |
+| GET     | `/api/admin/stats`        | Statistiques globales |
+
+---
+
+## **12. SERVICES AVANCÉS**
+
+| Méthode | Endpoint                   | Description |
+| ------- | -------------------------- | ----------- |
+| GET     | `/api/services/movers`     | Déménageurs |
+| GET     | `/api/services/cleaning`   | Nettoyage   |
+| GET     | `/api/services/insurance`  | Assurances  |
+| POST    | `/api/inspections/request` | Inspection  |
+| POST    | `/api/maintenance/request` | Maintenance |
+
+---
+
+## **13. IA ET ANALYSE**
+
+| Méthode | Endpoint                          | Description           |
+| ------- | --------------------------------- | --------------------- |
+| GET     | `/api/ai/recommendations/:userId` | Recommandations IA    |
+| POST    | `/api/ai/price-suggestion`        | Suggestion de prix    |
+| POST    | `/api/ai/fraud-check`             | Vérification fraude   |
+| POST    | `/api/ai/description-enhance`     | Améliorer description |
+
+---
+
+## **14. API PUBLIQUE & WEBHOOKS**
+
+| Méthode | Endpoint                        | Description              |
+| ------- | ------------------------------- | ------------------------ |
+| GET     | `/api/public/properties`        | Données publiques        |
+| POST    | `/api/webhooks/payment-success` | Callback paiement réussi |
+| POST    | `/api/integrations/maps`        | Intégration cartes       |
+
+---
+
+## **15. SUPPORT**
+
+| Méthode | Endpoint                | Description          |
+| ------- | ----------------------- | -------------------- |
+| POST    | `/api/support/tickets`  | Créer ticket support |
+| GET     | `/api/support/faq`      | Foire aux questions  |
+| POST    | `/api/support/feedback` | Envoyer feedback     |
 
 ---
 
 ## **📊 PRIORITÉS DE DÉVELOPPEMENT DÉTAILLÉES**
 
-### **🔥 PRIORITÉ 1 - MVP ESSENTIEL (Semaines 1-8)**
-```
-OBJECTIF: Plateforme fonctionnelle pour location de base
+### **🔥 Priorité 1 - MVP Essentiel (Semaines 1-8)**
 
-ENDPOINTS CRITIQUES (40 endpoints):
-├─ Authentification complète (8 endpoints)
-├─ Gestion propriétés de base (12 endpoints)
-├─ Recherche simple (6 endpoints)
-├─ Communication basique (8 endpoints)
-├─ Réservations simples (6 endpoints)
+* Authentification complète
+* Gestion propriétés de base
+* Recherche simple
+* Communication basique
+* Réservations simples
 
-FONCTIONNALITÉS CLÉS:
-✅ Inscription/Connexion sécurisée
-✅ Créer et publier propriétés avec photos
-✅ Rechercher et filtrer propriétés
-✅ Contacter propriétaires
-✅ Faire et répondre aux demandes de location
-✅ Profils utilisateurs de base
-✅ Favoris et recherches sauvées
+**Technologies :**
 
-TECHNOLOGIES:
-├─ Backend: Node.js + Express + TypeScript
-├─ DB: PostgreSQL avec migrations
-├─ Auth: JWT + Refresh tokens
-├─ Upload: Multer + stockage cloud
-├─ Email: SendGrid ou équivalent local
-```
+* Node.js + Express + TypeScript
+* PostgreSQL
+* JWT Auth
+* Multer + Cloud Storage
+* SendGrid (ou équivalent)
 
-### **⭐ PRIORITÉ 2 - FONCTIONNALITÉS BUSINESS (Semaines 9-16)**
-```
-OBJECTIF: Monétisation et engagement utilisateurs
+---
 
-ENDPOINTS INTERMÉDIAIRES (45 endpoints):
-├─ Paiements et wallet (15 endpoints)
-├─ Contrats et signatures (8 endpoints)
-├─ Système d'avis complet (12 endpoints)
-├─ Analytics propriétaires (10 endpoints)
+### **⭐ Priorité 2 - Fonctionnalités Business (Semaines 9-16)**
 
-FONCTIONNALITÉS CLÉS:
-✅ Paiements Mobile Money (T-Money, Flooz)
-✅ Contrats numériques avec signatures
-✅ Système d'avis bidirectionnel
-✅ Dashboard analytics pour propriétaires
-✅ Commission et revenus plateforme
-✅ Notifications push et email
-✅ Modération de contenu
+* Paiements Mobile Money
+* Contrats numériques
+* Système d’avis
+* Dashboard analytics
+* Notifications push
 
-TECHNOLOGIES:
-├─ Paiements: SDK Mobile Money
-├─ PDF: jsPDF pour contrats
-├─ Push: Firebase Cloud Messaging
-├─ Analytics: Mixpanel ou custom
-├─ Cron: node-cron pour tâches automatisées
-```
+**Technologies :**
 
-### **🚀 PRIORITÉ 3 - DIFFÉRENCIATION (Semaines 17-24)**
-```
-OBJECTIF: Fonctionnalités uniques et expansion
+* SDK Mobile Money
+* jsPDF
+* Firebase Cloud Messaging
+* Mixpanel
+* node-cron
 
-ENDPOINTS AVANCÉS (60 endpoints):
-├─ Administration complète (20 endpoints)
-├─ Services partenaires (15 endpoints)
-├─ IA et recommandations (12 endpoints)
-├─ API publique (8 endpoints)
-├─ Support avancé (5 endpoints)
+---
 
-FONCTIONNALITÉS CLÉS:
-✅ Panel d'administration complet
-✅ Services déménagement/nettoyage
-✅ Recommandations IA personnalisées
-✅ API publique pour partenaires
-✅ Support client intégré
-✅ Audit et sécurité avancés
-✅ Rapports et exports
+### **🚀 Priorité 3 - Différenciation (Semaines 17-24)**
 
-TECHNOLOGIES:
-├─ Admin: React Admin ou custom
-├─ IA: TensorFlow.js ou API OpenAI
-├─ Maps: Mapbox GL JS
-├─ Search: Elasticsearch
-├─ Queue: Redis + Bull
-```
+* Panel Admin complet
+* Services partenaires
+* Recommandations IA
+* API publique
+* Support client
+* Audit et sécurité
+
+**Technologies :**
+
+* React Admin
+* TensorFlow.js / OpenAI
+* Mapbox GL JS
+* Elasticsearch
+* Redis + Bull
 
 ---
 
 ## **🏗️ STRUCTURE BACKEND RECOMMANDÉE**
+
 ```
 src/
 ├── config/
-│   ├── database.ts                 # Configuration PostgreSQL
-│   ├── redis.ts                    # Configuration Redis
-│   ├── auth.ts                     # Configuration JWT
-│   ├── upload.ts                   # Configuration stockage fichiers
-│   └── constants.ts                # Constantes application
+│   ├── database.ts
+│   ├── redis.ts
+│   ├── auth.ts
+│   ├── upload.ts
+│   └── constants.ts
 │
 ├── controllers/
-│   ├── auth.controller.ts          # Authentification
-│   ├── users.controller.ts         # Gestion utilisateurs
-│   ├── properties.controller.ts    # Gestion propriétés
-│   ├── search.controller.ts        # Recherche et filtres
-│   ├── bookings.controller.ts      # Réservations
-│   ├── payments.controller.ts      # Paiements
-│   ├── messages.controller.ts      # Communication
-│   ├── reviews.controller.ts       # Avis et évaluations
-│   ├── notifications.controller.ts # Notifications
-│   └── admin.controller.ts         # Administration
+│   ├── auth.controller.ts
+│   ├── users.controller.ts
+│   ├── properties.controller.ts
+│   ├── search.controller.ts
+│   ├── bookings.controller.ts
+│   ├── payments.controller.ts
+│   ├── messages.controller.ts
+│   ├── reviews.controller.ts
+│   ├── notifications.controller.ts
+│   └── admin.controller.ts
 │
 ├── middleware/
-│   ├── auth.middleware.ts          # Vérification JWT
-│   ├── roles.middleware.ts         # Vérification rôles
-│   ├── validation.middleware.ts    # Validation données
-│   ├── ratelimit.middleware.ts     # Limitation débit
-│   ├── upload.middleware.ts        # Upload fichiers
-│   └── error.middleware.ts         # Gestion erreurs
+│   ├── auth.middleware.ts
+│   ├── roles.middleware.ts
+│   ├── validation.middleware.ts
+│   ├── ratelimit.middleware.ts
+│   ├── upload.middleware.ts
+│   └── error.middleware.ts
 │
 ├── models/
-│   ├── User.ts                     # Modèle utilisateur
-│   ├── Property.ts                 # Modèle propriété
-│   ├── Booking.ts                  # Modèle réservation
-│   ├── Transaction.ts              # Modèle transaction
-│   ├── Message.ts                  # Modèle message
-│   └── index.ts                    # Export modèles
+│   ├── User.ts
+│   ├── Property.ts
+│   ├── Booking.ts
+│   ├── Transaction.ts
+│   ├── Message.ts
+│   └── index.ts
 │
 ├── services/
-│   ├── auth.service.ts             # Services authentification
-│   ├── email.service.ts            # Services email
-│   ├── sms.service.ts              # Services SMS
-│   ├── payment.service.ts          # Services paiement
-│   ├── upload.service.ts           # Services upload
-│   ├── notification.service.ts     # Services notifications
-│   └── search.service.ts           # Services recherche
+│   ├── auth.service.ts
+│   ├── email.service.ts
+│   ├── sms.service.ts
+│   ├── payment.service.ts
+│   ├── upload.service.ts
+│   ├── notification.service.ts
+│   └── search.service.ts
 │
 ├── utils/
-│   ├── database.ts                 # Utilities base données
-│   ├── encryption.ts               # Chiffrement
-│   ├── validation.ts               # Schémas validation
-│   ├── helpers.ts                  # Fonctions utilitaires
-│   └── types.ts                    # Types TypeScript
+│   ├── database.ts
+│   ├── encryption.ts
+│   ├── validation.ts
+│   ├── helpers.ts
+│   └── types.ts
 │
 ├── routes/
-│   ├── auth.routes.ts              # Routes authentification
-│   ├── users.routes.ts             # Routes utilisateurs
-│   ├── properties.routes.ts        # Routes propriétés
-│   ├── search.routes.ts            # Routes recherche
-│   ├── bookings.routes.ts          # Routes réservations
-│   ├── payments.routes.ts          # Routes paiements
-│   ├── messages.routes.ts          # Routes messages
-│   ├── reviews.routes.ts           # Routes avis
-│   ├── admin.routes.ts             # Routes admin
-│   └── index.ts                    # Routes principales
+│   ├── auth.routes.ts
+│   ├── users.routes.ts
+│   ├── properties.routes.ts
+│   ├── search.routes.ts
+│   ├── bookings.routes.ts
+│   ├── payments.routes.ts
+│   ├── messages.routes.ts
+│   ├── reviews.routes.ts
+│   ├── admin.routes.ts
+│   └── index.ts
 │
 ├── migrations/
-│   ├── 001_create_users.sql        # Migration utilisateurs
-│   ├── 002_create_properties.sql   # Migration propriétés
-│   ├── 003_create_bookings.sql     # Migration réservations
-│   └── ...                         # Autres migrations
+│   ├── 001_create_users.sql
+│   ├── 002_create_properties.sql
+│   ├── 003_create_bookings.sql
+│   └── ...
 │
 ├── seeds/
-│   ├── categories.seed.ts          # Données catégories
-│   ├── admin.seed.ts               # Utilisateur admin
-│   └── settings.seed.ts            # Paramètres initiaux
+│   ├── categories.seed.ts
+│   ├── admin.seed.ts
+│   └── settings.seed.ts
 │
 ├── tests/
-│   ├── auth.test.ts                # Tests authentification
-│   ├── properties.test.ts          # Tests propriétés
-│   ├── bookings.test.ts            # Tests réservations
-│   └── ...                         # Autres tests
+│   ├── auth.test.ts
+│   ├── properties.test.ts
+│   ├── bookings.test.ts
+│   └── ...
 │
 ├── docs/
-│   ├── api.md                      # Documentation API
-│   ├── database.md                 # Documentation DB
-│   └── deployment.md               # Guide déploiement
+│   ├── api.md
+│   ├── database.md
+│   └── deployment.md
 │
-├── app.ts                          # Configuration Express
-├── server.ts                       # Point d'entrée serveur
-└── package.json                    # Dépendances Node.js
+├── app.ts
+├── server.ts
+└── package.json
+```
+
+---
