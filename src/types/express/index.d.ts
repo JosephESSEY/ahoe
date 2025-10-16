@@ -1,9 +1,16 @@
-declare namespace Express {
-  export interface Request {
-    user?: {
-      id: string;
-      pseudo: string;
-      role: "admin" | "user";
-    };
+import { User } from '../../features/auth/auth.model';
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+        phone: string;
+        role: string;
+      };
+    }
   }
 }
+
+export {};
