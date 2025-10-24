@@ -1,4 +1,3 @@
-// src/shared/utils/jwt.utils.ts
 import jwt from 'jsonwebtoken';
 
 const ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || 'access-secret-key';

@@ -1,4 +1,4 @@
-import { User } from '../../features/auth/auth.model';
+import { RoleType } from '../../../features/auth/auth.model';
 
 declare global {
   namespace Express {
@@ -7,7 +7,7 @@ declare global {
         id: string;
         email: string;
         phone: string;
-        role: string;
+        role: RoleType;
       };
     }
   }

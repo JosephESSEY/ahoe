@@ -1,11 +1,9 @@
-// src/shared/middlewares/auth.middleware.ts
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../utils/jwt.utils';
 import db from '../database/client';
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Extract token from Authorization header
     const authHeader = req.headers.authorization;
 
     if (!authHeader?.startsWith('Bearer ')) {
@@ -17,10 +15,8 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
 
     const token = authHeader.substring(7);
 
-    // Verify token
     const decoded = verifyAccessToken(token);
 
-    // Check if user still exists and is active
     const userQuery = `SELECT id, email, phone, status, role FROM users WHERE id = $1`;
     const userResult = await db.query(userQuery, [decoded.userId]);
     const user = userResult.rows[0];
@@ -39,7 +35,6 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
       });
     }
 
-    // Attach user to request
     req.user = {
       id: user.id,
       email: user.email,
@@ -48,7 +43,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     };
 
     // Set user context for Row Level Security
-    await db.query(`SET app.current_user_id = '${user.id}'`);
+    // await db.query(`SET app.current_user_id = $1`, [user.id]);
 
     next();
   } catch (error: any) {

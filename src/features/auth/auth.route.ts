@@ -1,4 +1,3 @@
-// src/features/auth/auth.routes.ts
 import { Router } from 'express';
 import { AuthController } from './auth.controller';
 import { authMiddleware } from '../../shared/middlewares/auth.middleware';
@@ -79,7 +78,7 @@ router.post('/register', authController.register.bind(authController));
  *               - identifier
  *               - password
  *             properties:
- *               *               identifier:
+ *               identifier:
  *                 type: string
  *                 description: Email ou numéro de téléphone
  *               password:
@@ -416,7 +415,7 @@ router.post(
  *       401:
  *         description: Non authentifié
  */
-router.get('/me', authMiddleware, authController.getMe.bind(authController));
+// router.get('/me', authMiddleware, authController.getMe.bind(authController));
 
 /**
  * @swagger

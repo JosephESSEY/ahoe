@@ -6,13 +6,13 @@ export interface User {
   status: UserStatus;
   email_verified: boolean;
   phone_verified: boolean;
-  role: string;
   fcm_token?: string | null;
   last_login?: Date;
   login_attempts: number;
   locked_until?: Date | null;
   created_at: Date;
   updated_at: Date;
+  role: string;
 }
 
 export enum UserStatus {
@@ -51,18 +51,6 @@ export interface NotificationPreferences {
   marketing: boolean;
 }
 
-export interface UserRole {
-  id: string;
-  user_id: string;
-  role_type: RoleType;
-  is_verified: boolean;
-  verification_documents: any[];
-  business_license?: string | null;
-  tax_number?: string | null;
-  verified_at?: Date | null;
-  verified_by?: string | null;
-  created_at: Date;
-}
 
 export enum RoleType {
   TENANT = 'tenant',
@@ -124,7 +112,6 @@ export interface RegisterDTO {
   password: string;
   first_name: string;
   last_name: string;
-  role_type: RoleType;
   preferred_language?: string;
   referral_code?: string;
 }
@@ -180,16 +167,5 @@ export interface TokenResponse {
   refresh_token: string;
   expires_in: number;
   token_type: string;
-  user: UserResponse;
-}
-
-export interface UserResponse {
-  id: string;
-  email: string;
-  phone: string;
-  profile: UserProfile;
-  roles: UserRole[];
-  email_verified: boolean;
-  phone_verified: boolean;
-  status: UserStatus;
+  expiresAt: Date;
 }

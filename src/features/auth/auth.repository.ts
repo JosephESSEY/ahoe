@@ -2,7 +2,6 @@ import db from '../../shared/database/client';
 import {
   User,
   UserProfile,
-  UserRole,
   OtpCode,
   RefreshToken,
   VerificationToken,
@@ -17,9 +16,9 @@ export class AuthRepository {
   
   // ==================== USERS ====================
   
-  async createUser(data: RegisterDTO, hashedPassword: string): Promise<User> {
+  async createUser(data: RegisterDTO, role_id: string, hashedPassword: string): Promise<User> {
     const query = `
-      INSERT INTO users (email, phone, password, status, email_verified, phone_verified, role, login_attempts)
+      INSERT INTO users (email, phone, password_hash, status, email_verified, phone_verified, role_id, login_attempts)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `;
@@ -30,7 +29,7 @@ export class AuthRepository {
       UserStatus.PENDING_VERIFICATION,
       false,
       false,
-      data.role_type,
+      role_id,
       0
     ];
     const result = await db.query(query, values);
@@ -204,39 +203,54 @@ export class AuthRepository {
 
   // ==================== USER ROLES ====================
 
-  async createUserRole(userId: string, roleType: RoleType): Promise<UserRole> {
-    const query = `
-      INSERT INTO user_roles (user_id, role_type, is_verified)
-      VALUES ($1, $2, $3)
-      RETURNING *
-    `;
-    const isVerified = roleType === RoleType.TENANT; // Auto-verify tenants
-    const result = await db.query(query, [userId, roleType, isVerified]);
-    return result.rows[0];
+  async getOrCreateRole(roleName: RoleType, description: string): Promise<string> {
+    const insertRes = await db.query(
+      `
+        INSERT INTO roles (role_name, role_description)
+        VALUES ($1, $2)
+        ON CONFLICT (role_name) DO NOTHING
+        RETURNING role_id
+      `,
+      [roleName, description]
+    );
+
+    if (insertRes.rows[0]?.role_id) return insertRes.rows[0].role_id;
+
+    const selectRes = await db.query(
+      `SELECT role_id FROM roles WHERE role_name = $1`,
+      [roleName]
+    );
+
+    return selectRes.rows[0].role_id;
   }
 
-  async findUserRoles(userId: string): Promise<UserRole[]> {
-    const query = `SELECT * FROM user_roles WHERE user_id = $1`;
-    const result = await db.query(query, [userId]);
-    return result.rows;
+  async getOrCreatePermission(permissionName: string): Promise<string> {
+    const insertRes = await db.query(
+      `
+        INSERT INTO permission (permission_name)
+        VALUES ($1)
+        ON CONFLICT (permission_name) DO NOTHING
+        RETURNING permission_id
+      `,
+      [permissionName]
+    );
+
+    if (insertRes.rows[0]?.permission_id) return insertRes.rows[0].permission_id;
+
+    const selectRes = await db.query(
+      `SELECT permission_id FROM permission WHERE permission_name = $1`,
+      [permissionName]
+    );
+
+    return selectRes.rows[0].permission_id;
   }
 
-  async updateRoleVerification(
-    userId: string, 
-    roleType: RoleType, 
-    isVerified: boolean,
-    verifiedBy?: string
-  ): Promise<void> {
-    const query = `
-      UPDATE user_roles 
-      SET is_verified = $1, 
-          verified_at = CASE WHEN $1 = TRUE THEN NOW() ELSE NULL END,
-          verified_by = $2
-      WHERE user_id = $3 AND role_type = $4
-    `;
-    await db.query(query, [isVerified, verifiedBy, userId, roleType]);
+  async linkRoleToPermission(roleId: string, permId: string) {
+    await db.query(
+      `INSERT INTO role_permission (role_id, permission_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [roleId, permId],
+    );
   }
-
   // ==================== OTP CODES ====================
 
   async saveOtp(phone: string, code: string, expiresAt: Date): Promise<void> {

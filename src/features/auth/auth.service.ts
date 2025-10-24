@@ -1,4 +1,3 @@
-// src/features/auth/auth.service.ts
 import { AuthRepository } from './auth.repository';
 import {
   RegisterDTO,
@@ -10,7 +9,6 @@ import {
   ResetPasswordDTO,
   ChangePasswordDTO,
   TokenResponse,
-  UserResponse,
   User,
   UserStatus,
   RoleType,
@@ -32,6 +30,9 @@ import { sendEmail } from '../../shared/utils/sendEmail';
 import { sendSMS } from '../../shared/utils/sendSms';
 import crypto from 'crypto';
 
+import { generateAuthTokens } from './helpers/generateAuthTokens.helper';
+import { Permission } from '../../shared/permissions/permissions';
+
 export class AuthService {
   private repo: AuthRepository;
 
@@ -39,14 +40,10 @@ export class AuthService {
     this.repo = new AuthRepository();
   }
 
-  // ==================== REGISTRATION ====================
-
   async register(data: RegisterDTO): Promise<TokenResponse> {
-    // Validation
-    await this.validateRegistration(data);
-
-    // Check existing user
+    console.log("Register data:", data);
     const existingEmail = await this.repo.findUserByEmail(data.email);
+    console.log("Existing email check:", existingEmail);
     if (existingEmail) {
       throw { statusCode: 400, message: 'Cet email est déjà utilisé' };
     }
@@ -56,68 +53,41 @@ export class AuthService {
       throw { statusCode: 400, message: 'Ce numéro de téléphone est déjà utilisé' };
     }
 
-    // Hash password
     const hashedPassword = await hashPassword(data.password);
 
-    // Create user
-    const user = await this.repo.createUser(data, hashedPassword);
+    const role_id = await this.repo.getOrCreateRole(RoleType.TENANT, "Locataire par défaut");
 
-    // Create profile
+    const tenantPermissions = [
+      Permission.USERS_READ_OWN,
+      Permission.USERS_UPDATE_OWN,
+      Permission.BOOKINGS_CREATE,
+      Permission.BOOKINGS_READ_OWN,
+    ];
+
+    for (const permission of tenantPermissions) {
+      const permission_id = await this.repo.getOrCreatePermission(permission);
+      await this.repo.linkRoleToPermission(role_id, permission_id);
+    }
+
+
+    const user = await this.repo.createUser(data, role_id, hashedPassword);
+
     await this.repo.createUserProfile(user.id, data);
 
-    // Create role
-    await this.repo.createUserRole(user.id, data.role_type);
 
-    // Send verification email
-    await this.sendEmailVerification(user.id, data.email);
+    // await this.sendEmailVerification(user.id, data.email);
 
-    // Send verification SMS
-    await this.sendPhoneVerification(data.phone);
+    // await this.sendPhoneVerification(data.phone);
 
     // Generate tokens
-    const tokens = await this.generateAuthTokens(user);
+    const tokens = generateAuthTokens(user);
+
+    await this.repo.saveRefreshToken(user.id, tokens.refresh_token, tokens.expiresAt);
+
 
     return tokens;
   }
 
-  private async validateRegistration(data: RegisterDTO): Promise<void> {
-    // Email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) {
-      throw { statusCode: 400, message: 'Format email invalide' };
-    }
-
-    // Phone format (international)
-    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-    if (!phoneRegex.test(data.phone)) {
-      throw { statusCode: 400, message: 'Format téléphone invalide' };
-    }
-
-    // Password strength
-    if (data.password.length < 8) {
-      throw { statusCode: 400, message: 'Le mot de passe doit contenir au moins 8 caractères' };
-    }
-    if (!/[A-Z]/.test(data.password)) {
-      throw { statusCode: 400, message: 'Le mot de passe doit contenir au moins une majuscule' };
-    }
-    if (!/[a-z]/.test(data.password)) {
-      throw { statusCode: 400, message: 'Le mot de passe doit contenir au moins une minuscule' };
-    }
-    if (!/[0-9]/.test(data.password)) {
-      throw { statusCode: 400, message: 'Le mot de passe doit contenir au moins un chiffre' };
-    }
-    if (!/[^A-Za-z0-9]/.test(data.password)) {
-      throw { statusCode: 400, message: 'Le mot de passe doit contenir au moins un caractère spécial' };
-    }
-
-    // Name validation
-    if (data.first_name.trim().length < 2) {
-      throw { statusCode: 400, message: 'Le prénom doit contenir au moins 2 caractères' };
-    }
-    if (data.last_name.trim().length < 2) {
-      throw { statusCode: 400, message: 'Le nom doit contenir au moins 2 caractères' };
-    }
-  }
 
   // ==================== LOGIN ====================
 
@@ -190,7 +160,7 @@ export class AuthService {
     });
 
     // Generate tokens
-    const tokens = await this.generateAuthTokens(user, data.remember_me);
+    const tokens = await generateAuthTokens(user, data.remember_me);
 
     return tokens;
   }
@@ -229,20 +199,18 @@ export class AuthService {
         password: crypto.randomBytes(32).toString('hex'), // Random password
         first_name: socialUser.first_name,
         last_name: socialUser.last_name,
-        role_type: RoleType.TENANT,
         preferred_language: 'fr'
       };
 
-      user = await this.repo.createUser(registerData, await hashPassword(registerData.password));
-      await this.repo.createUserProfile(user.id, registerData);
-      await this.repo.createUserRole(user.id, RoleType.TENANT);
+      // user = await this.repo.createUser(registerData, await hashPassword(registerData.password));
+      // await this.repo.createUserProfile(user.id, registerData);
 
       // Auto-verify email for social accounts
-      await this.repo.updateEmailVerification(user.id);
+      // await this.repo.updateEmailVerification(user.id);
     }
 
     // Generate tokens
-    const tokens = await this.generateAuthTokens(user);
+    const tokens = await generateAuthTokens(user!);
 
     return tokens;
   }
@@ -290,8 +258,7 @@ export class AuthService {
       refresh_token: newRefreshToken,
       expires_in: 900, // 15 minutes
       token_type: 'Bearer',
-      user: await this.getUserResponse(user)
-    };
+      expiresAt: expiresAt};
   }
 
   async logout(userId: string, refreshToken?: string): Promise<void> {
@@ -592,16 +559,6 @@ export class AuthService {
 
   // ==================== USER MANAGEMENT ====================
 
-  async getMe(userId: string): Promise<UserResponse> {
-    const user = await this.repo.findUserById(userId);
-
-    if (!user) {
-      throw { statusCode: 404, message: 'Utilisateur introuvable' };
-    }
-
-    return await this.getUserResponse(user);
-  }
-
   async updateFcmToken(userId: string, fcmToken: string): Promise<void> {
     await this.repo.updateFcmToken(userId, fcmToken);
   }
@@ -612,41 +569,4 @@ export class AuthService {
 
   // ==================== HELPER METHODS ====================
 
-  private async generateAuthTokens(user: User, rememberMe: boolean = false): Promise<TokenResponse> {
-    // Generate access token (15 minutes)
-    const accessToken = generateAccessToken(user.id, user.role);
-
-    // Generate refresh token (7 days or 30 days if remember_me)
-    const refreshToken = generateRefreshToken(user.id, rememberMe);
-
-    // Save refresh token
-    const expiresAt = new Date(
-      Date.now() + (rememberMe ? 30 : 7) * 24 * 60 * 60 * 1000
-    );
-    await this.repo.saveRefreshToken(user.id, refreshToken, expiresAt);
-
-    return {
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      expires_in: 900, // 15 minutes
-      token_type: 'Bearer',
-      user: await this.getUserResponse(user)
-    };
-  }
-
-  private async getUserResponse(user: User): Promise<UserResponse> {
-    const profile = await this.repo.findUserProfile(user.id);
-    const roles = await this.repo.findUserRoles(user.id);
-
-    return {
-      id: user.id,
-      email: user.email,
-      phone: user.phone,
-      profile: profile!,
-      roles: roles,
-      email_verified: user.email_verified,
-      phone_verified: user.phone_verified,
-      status: user.status
-    };
-  }
 }

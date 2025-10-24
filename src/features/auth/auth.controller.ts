@@ -1,4 +1,3 @@
-// src/features/auth/auth.controller.ts
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from './auth.service';
 import {
@@ -20,11 +19,9 @@ export class AuthController {
     this.authService = new AuthService();
   }
 
-  // ==================== REGISTRATION ====================
-
   async register(req: Request, res: Response, next: NextFunction) {
     try {
-      const requiredFields = ['email', 'phone', 'password', 'first_name', 'last_name', 'role_type'];
+      const requiredFields = ['email', 'phone', 'password', 'first_name', 'last_name'];
       const missingFields = getMissingFields(req.body, requiredFields);
 
       if (missingFields.length > 0) {
@@ -41,7 +38,6 @@ export class AuthController {
         password: req.body.password,
         first_name: req.body.first_name,
         last_name: req.body.last_name,
-        role_type: req.body.role_type,
         preferred_language: req.body.preferred_language || 'fr',
         referral_code: req.body.referral_code
       };
@@ -54,7 +50,11 @@ export class AuthController {
         data: result
       });
     } catch (error: any) {
-      next(error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Server error',
+        error: error.details || undefined
+      });
     }
   }
 
@@ -105,7 +105,6 @@ export class AuthController {
           access_token: result.access_token,
           expires_in: result.expires_in,
           token_type: result.token_type,
-          user: result.user
         }
       });
     } catch (error: any) {
@@ -151,7 +150,6 @@ export class AuthController {
           access_token: result.access_token,
           expires_in: result.expires_in,
           token_type: result.token_type,
-          user: result.user
         }
       });
     } catch (error: any) {
@@ -465,28 +463,7 @@ export class AuthController {
 
   // ==================== USER INFO ====================
 
-  async getMe(req: Request, res: Response, next: NextFunction) {
-    try {
-      const userId = req.user?.id;
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: 'Non authentifié'
-        });
-      }
-
-      const user = await this.authService.getMe(userId);
-
-      res.status(200).json({
-        success: true,
-        data: user
-      });
-    } catch (error: any) {
-      next(error);
-    }
-  }
-
+  
   async updateFcmToken(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user?.id;

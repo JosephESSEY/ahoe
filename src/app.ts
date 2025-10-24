@@ -4,6 +4,8 @@ import cookieParser from "cookie-parser";
 import pool  from "./shared/database/client";
 import { errorHandler } from "./shared/middlewares/error.middleware";
 
+import authRoutes from "./features/auth/auth.route";
+import managerRoutes from "./features/manager/manager.route";
 import swaggerRoute from "./shared/docs/swagger";
 
 
@@ -51,7 +53,9 @@ export class App{
         });
 
         
-        // this.app.use("/api/auth", AuthRoutes);
+        this.app.use("/api/auth", authRoutes);
+        this.app.use("/api/manager", managerRoutes);
+        
         this.app.use("/api-docs", swaggerRoute);
     }
     

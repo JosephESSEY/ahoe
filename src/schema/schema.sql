@@ -1,16 +1,7 @@
--- ===========================================
--- CRÉATION DE LA BASE DE DONNÉES
--- ===========================================
-
--- Extensions nécessaires
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "unaccent";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE EXTENSION IF NOT EXISTS "postgis";
-
--- ===========================================
--- TYPES ENUM PERSONNALISÉS
--- ===========================================
 
 -- Status utilisateur
 CREATE TYPE user_status AS ENUM ('active', 'suspended', 'deleted', 'pending_verification');
@@ -82,6 +73,29 @@ CREATE TYPE alert_frequency AS ENUM ('immediate', 'daily', 'weekly', 'monthly');
 -- TABLES PRINCIPALES
 -- ===========================================
 
+CREATE TABLE IF NOT EXISTS roles (
+  role_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  role_name VARCHAR(50) UNIQUE NOT NULL,
+  role_description TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP
+);
+
+-- Table PERMISSION
+CREATE TABLE IF NOT EXISTS permission (
+  permission_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  permission_name VARCHAR(100) UNIQUE NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Table ROLEPERMISSION
+CREATE TABLE IF NOT EXISTS role_permission (
+  role_id UUID REFERENCES roles(role_id) ON DELETE CASCADE,
+  permission_id UUID REFERENCES permission(permission_id) ON DELETE CASCADE,
+  PRIMARY KEY (role_id, permission_id)
+);
+
 -- Table des utilisateurs
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -100,10 +114,7 @@ CREATE TABLE users (
     last_login TIMESTAMP WITH TIME ZONE,
     login_attempts INTEGER DEFAULT 0,
     locked_until TIMESTAMP WITH TIME ZONE,
-    
-    -- Contraintes
-    CONSTRAINT valid_email CHECK (email ~* '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$'),
-    CONSTRAINT valid_phone CHECK (phone IS NULL OR phone ~* '^\+?[0-9]{8,15}$')
+    role_id UUID NOT NULL REFERENCES roles(role_id)
 );
 
 -- Profils utilisateur
@@ -133,30 +144,21 @@ CREATE TABLE user_profiles (
         "show_profile": true
     }'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
-    -- Contraintes
-    CONSTRAINT valid_birth_date CHECK (date_of_birth IS NULL OR date_of_birth < CURRENT_DATE),
-    CONSTRAINT valid_language CHECK (preferred_language IN ('fr', 'en', 'ee', 'kbp'))
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Rôles utilisateur
-CREATE TABLE user_roles (
+CREATE TABLE refresh_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_type role_type NOT NULL,
-    is_verified BOOLEAN DEFAULT FALSE,
-    verification_documents JSONB DEFAULT '[]'::jsonb,
-    business_license VARCHAR(100),
-    tax_number VARCHAR(50),
-    verification_notes TEXT,
-    verified_at TIMESTAMP WITH TIME ZONE,
-    verified_by UUID REFERENCES users(id),
+    user_id UUID NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
-    -- Un utilisateur ne peut avoir qu'un seul rôle de chaque type
-    UNIQUE(user_id, role_type)
+    CONSTRAINT fk_user
+        FOREIGN KEY(user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
 );
+
 
 -- Catégories de propriété
 CREATE TABLE property_categories (
