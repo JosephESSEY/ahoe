@@ -234,6 +234,7 @@ CREATE TABLE properties (
     has_pool BOOLEAN DEFAULT FALSE,
     has_security BOOLEAN DEFAULT FALSE,
     has_generator BOOLEAN DEFAULT FALSE,
+    has_cash_power BOOLEAN DEFAULT FALSE,
     has_solar BOOLEAN DEFAULT FALSE,
     
     -- Équipements et services (flexible)

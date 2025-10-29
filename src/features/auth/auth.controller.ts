@@ -107,6 +107,24 @@ export class AuthController {
   }
 }
 
+  async verifyOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+    const { channel, target, code, purpose } = req.body;
+
+    if (!channel || !target || !code) {
+      return res.status(400).json({ success: false, message: 'channel, target et code sont requis' });
+    }
+
+    const result = await this.authService.verifyOtp({ channel, target, code, purpose });
+    return res.status(200).json(result);
+  } catch (err: any) {
+    const status = err?.statusCode || 500;
+    const message = err?.message || 'Erreur serveur';
+    return res.status(status).json({ success: false, message });
+  }
+  }
+
+
   // ==================== LOGIN ====================
 
   async login(req: Request, res: Response, next: NextFunction) {

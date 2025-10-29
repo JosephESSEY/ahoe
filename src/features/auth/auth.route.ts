@@ -62,6 +62,42 @@ const authController = new AuthController();
  */
 router.post('/register', authController.register.bind(authController));
 
+
+/** * @swagger
+ * /auth/verify-otp:
+ *   post:
+ *   summary: Vérifier le code OTP
+ *  tags: [Auth]
+ *   requestBody:
+ *     required: true
+ *    content:
+ *      application/json:
+ *       schema:
+ *        type: object
+ *        required:
+ *         - target
+ *        - channel
+ *        - code
+ *       properties:
+ *        target:
+ *        type: string
+ *       description: Email ou téléphone selon le canal
+ *       channel:
+ *       type: string
+ *      enum: [email, phone]
+ *    code:
+ *    type: string
+ *  description: Code OTP reçu
+ *  responses:
+ *      200:
+ *    description: OTP vérifié avec succès
+ *    400:
+ *   description: Code OTP invalide ou expiré
+ *  429:
+ *   description: Trop de tentatives
+ */ 
+router.post('/verify-otp', authController.verifyOtp.bind(authController));
+
 /**
  * @swagger
  * /auth/login:

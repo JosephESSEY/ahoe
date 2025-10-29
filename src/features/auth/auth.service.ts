@@ -43,7 +43,7 @@ export class AuthService {
     this.repo = new AuthRepository();
   }
 
-  async register(data: RegisterDTO, method: string): Promise<TokenResponse> {
+  async register(data: RegisterDTO, method: string): Promise<TokenResponse | any> {
     let user: User | null = null;
 
     if (method === 'google') {
@@ -137,7 +137,12 @@ export class AuthService {
       const tokens = generateAuthTokens(user);
       await this.repo.saveRefreshToken(user.id, tokens.refresh_token, tokens.expiresAt);
 
-      return tokens;
+      if (!user.email_verified && method === 'email' && data.email) {
+        return { success: true, message: 'Un OTP vous a été envoyé. Veuillez le valider.' };
+      }else if( !user.phone_verified && method === 'phone' && data.phone){
+        return { success: true, message: 'Un OTP vous a été envoyé. Veuillez le valider.' };
+      }
+
     }
   }
 
@@ -149,7 +154,6 @@ export class AuthService {
     user_agent: string;
     device_info: any;
   }): Promise<TokenResponse> {
-    // Find user
     const user = await this.repo.findUserByEmailOrPhone(data.identifier);
 
     if (!user) {
@@ -355,7 +359,7 @@ export class AuthService {
   }
 
   async verifyEmail(data: VerifyEmailDTO): Promise<void> {
-    // Find token
+    
     const tokenRecord = await this.repo.findVerificationToken(data.token, VerificationType.EMAIL);
 
     if (!tokenRecord) {
@@ -366,7 +370,6 @@ export class AuthService {
     await this.repo.updateEmailVerification(tokenRecord.user_id);
 
     // Mark token as used
-    await this.repo.markTokenAsUsed(tokenRecord.id);
 
     // Send welcome email
     const user = await this.repo.findUserById(tokenRecord.user_id);
@@ -620,6 +623,55 @@ export class AuthService {
     return await this.repo.getUserLoginHistory(userId, limit);
   }
 
-  // ==================== HELPER METHODS ====================
+
+  async verifyOtp(params: { channel: OtpChannel; target: string; code: string; purpose?: string }): Promise<{ success: true; message: string }> {
+    const { channel, target, code, purpose } = params;
+    console.log('Verifying OTP:', params);
+
+    if (!channel || !target || !code) {
+      throw { statusCode: 400, message: 'Paramètres manquants' };
+    }
+
+    const normalizedTarget = channel === OtpChannel.EMAIL ? target.toLowerCase().trim() : target.trim();
+
+    const otpRecord = await this.repo.findOtp(normalizedTarget, channel);
+    if (!otpRecord) {
+      throw { statusCode: 400, message: 'Code OTP invalide ou expiré' };
+    }
+
+    if (otpRecord.attempts >= otpRecord.max_attempts) {
+      await this.repo.deleteOtp(normalizedTarget, channel);
+      throw { statusCode: 429, message: 'Trop de tentatives. Demandez un nouveau code' };
+    }
+
+    if (otpRecord.code !== code) {
+      const attempts = await this.repo.incrementOtpAttempts(normalizedTarget, channel);
+      const remaining = Math.max(0, otpRecord.max_attempts - attempts);
+      throw { statusCode: 400, message: `Code incorrect. ${remaining} tentatives restantes` };
+    }
+
+    await this.repo.markOtpAsUsed(normalizedTarget, channel);
+
+    let user = null;
+    if (otpRecord.user_id) {
+      user = await this.repo.findUserById(otpRecord.user_id);
+    } else {
+      user = channel === OtpChannel.EMAIL
+        ? await this.repo.findUserByEmail(normalizedTarget)
+        : await this.repo.findUserByPhone(normalizedTarget);
+    }
+
+    if (user) {
+      if (channel === OtpChannel.EMAIL) {
+        await this.repo.updateEmailVerification(user.id);
+        await this.repo.updateUserStatus(user.id, UserStatus.ACTIVE);
+      } else {
+        await this.repo.updatePhoneVerification(user.id);
+        await this.repo.updateUserStatus(user.id, UserStatus.ACTIVE);
+      }
+    }
+
+    return { success: true, message: 'OTP vérifié avec succès' };
+  }
 
 }
