@@ -12,6 +12,8 @@ CREATE TYPE gender_type AS ENUM ('male', 'female', 'other', 'prefer_not_to_say')
 -- Types de rôles utilisateur
 CREATE TYPE role_type AS ENUM ('tenant', 'landlord', 'agent', 'admin', 'super_admin');
 
+CREATE TYPE otp_channel AS ENUM ('email','phone');
+
 -- Types de propriété
 CREATE TYPE rental_type AS ENUM ('daily', 'weekly', 'monthly', 'yearly');
 
@@ -99,7 +101,7 @@ CREATE TABLE IF NOT EXISTS role_permission (
 -- Table des utilisateurs
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    email VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     phone VARCHAR(20) UNIQUE,
     status user_status DEFAULT 'pending_verification',
@@ -158,6 +160,28 @@ CREATE TABLE refresh_tokens (
         REFERENCES users(id)
         ON DELETE CASCADE
 );
+
+
+CREATE TABLE IF NOT EXISTS otp_codes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NULL REFERENCES users(id) ON DELETE SET NULL,
+  channel otp_channel NOT NULL DEFAULT 'email'::otp_channel,
+  target VARCHAR(255) NOT NULL,          -- email (minuscules) ou phone (E.164)
+  code VARCHAR(64) NOT NULL,             -- OTP (6 chiffres ou token jusqu'à 64 chars)
+  purpose VARCHAR(64) DEFAULT 'verification', -- 'email_verification', 'phone_reset', etc.
+  attempts SMALLINT NOT NULL DEFAULT 0,
+  max_attempts SMALLINT NOT NULL DEFAULT 5,
+  used BOOLEAN NOT NULL DEFAULT FALSE,
+  expires_at TIMESTAMPTZ NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes utiles
+CREATE INDEX IF NOT EXISTS idx_otp_codes_target_channel ON otp_codes (lower(target), channel);
+CREATE INDEX IF NOT EXISTS idx_otp_codes_code ON otp_codes (code);
+CREATE INDEX IF NOT EXISTS idx_otp_codes_expires_at ON otp_codes (expires_at);
+
 
 
 -- Catégories de propriété

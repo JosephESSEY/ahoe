@@ -20,6 +20,7 @@ const env : EnvConfig = {
     DB_NAME: process.env.DB_NAME || '',
     PORT: Number(process.env.PORT),
     JWT_SECRET: process.env.JWT_SECRET || ''
+    
 }
 
 if(!env.DB_HOST) throw new Error('DB_HOST is missing in .env');

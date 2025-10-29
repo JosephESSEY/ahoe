@@ -3,6 +3,7 @@ import {
   User,
   UserProfile,
   OtpCode,
+  OtpChannel,
   RefreshToken,
   VerificationToken,
   LoginHistory,
@@ -252,40 +253,132 @@ export class AuthRepository {
     );
   }
   // ==================== OTP CODES ====================
+  
+  /**
+   * Sauvegarde / met à jour un OTP pour une cible (email ou phone).
+   * Si un enregistrement existe pour (lower(target), channel) on le met à jour (reset attempts),
+   * sinon on l'insère.
+   */
+  async saveOtp(
+    target: string,
+    channel: OtpChannel,
+    code: string,
+    expiresAt: Date | null,
+    userId?: string | null,
+    purpose: string = 'verification',
+    maxAttempts: number = 5,
+  ): Promise<OtpCode> {
+    // Normalize target for emails
+    const normalizedTarget = channel === OtpChannel.EMAIL ? target.toLowerCase() : target;
 
-  async saveOtp(phone: string, code: string, expiresAt: Date): Promise<void> {
-    const query = `
-      INSERT INTO otp_codes (phone, code, expires_at, attempts)
-      VALUES ($1, $2, $3, 0)
-      ON CONFLICT (phone) 
-      DO UPDATE SET code = $2, expires_at = $3, attempts = 0
+    const updateQuery = `
+      UPDATE otp_codes
+      SET code = $1,
+          expires_at = $2,
+          attempts = 0,
+          max_attempts = $3,
+          user_id = $4,
+          purpose = $5,
+          updated_at = NOW()
+      WHERE lower(target) = lower($6) AND channel = $7
+      RETURNING *
     `;
-    await db.query(query, [phone, code, expiresAt]);
+
+    const updateValues = [
+      code,
+      expiresAt,
+      maxAttempts,
+      userId,
+      purpose,
+      normalizedTarget,
+      channel
+    ];
+
+    const updateRes = await db.query(updateQuery, updateValues);
+    if (updateRes.rowCount! > 0) {
+      return updateRes.rows[0];
+    }
+
+    const insertQuery = `
+      INSERT INTO otp_codes
+      (user_id, channel, target, code, purpose, attempts, max_attempts, used, expires_at, created_at, updated_at)
+      VALUES ($1,$2,$3,$4,$5,0,$6,false,$7,NOW(),NOW())
+      RETURNING *
+    `;
+
+    const insertValues = [
+      userId,
+      channel,
+      normalizedTarget,
+      code,
+      purpose,
+      maxAttempts,
+      expiresAt,
+    ];
+
+    const insertRes = await db.query(insertQuery, insertValues);
+    return insertRes.rows[0];
   }
 
-  async findOtp(phone: string): Promise<OtpCode | null> {
+  /**
+   * Récupère le OTP valide pour une cible + canal (non utilisé et non expiré).
+   */
+  async findOtp(target: string, channel: OtpChannel): Promise<OtpCode | null> {
+    const normalizedTarget = channel === OtpChannel.EMAIL ? target.toLowerCase() : target;
+
     const query = `
-      SELECT * FROM otp_codes 
-      WHERE phone = $1 AND expires_at > NOW()
+      SELECT *
+      FROM otp_codes
+      WHERE lower(target) = lower($1)
+        AND channel = $2
+        AND used = false
+        AND (expires_at IS NULL OR expires_at > NOW())
+      ORDER BY created_at DESC
+      LIMIT 1
     `;
-    const result = await db.query(query, [phone]);
-    return result.rows[0] || null;
+    const res = await db.query(query, [normalizedTarget, channel]);
+    return res.rows[0] || null;
   }
 
-  async incrementOtpAttempts(phone: string): Promise<number> {
+  /**
+   * Incrémente le compteur d'essais pour la cible + canal.
+   * Retourne le nouveau nombre d'essais.
+   */
+  async incrementOtpAttempts(target: string, channel: OtpChannel): Promise<number> {
+    const normalizedTarget = channel === OtpChannel.EMAIL ? target.toLowerCase() : target;
+
     const query = `
-      UPDATE otp_codes 
-      SET attempts = attempts + 1
-      WHERE phone = $1
+      UPDATE otp_codes
+      SET attempts = attempts + 1,
+          updated_at = NOW()
+      WHERE lower(target) = lower($1) AND channel = $2
       RETURNING attempts
     `;
-    const result = await db.query(query, [phone]);
-    return result.rows[0]?.attempts || 0;
+    const res = await db.query(query, [normalizedTarget, channel]);
+    return res.rows[0]?.attempts ?? 0;
   }
 
-  async deleteOtp(phone: string): Promise<void> {
-    const query = `DELETE FROM otp_codes WHERE phone = $1`;
-    await db.query(query, [phone]);
+  /**
+   * Marque un OTP comme utilisé (consommé).
+   */
+  async markOtpAsUsed(target: string, channel: OtpChannel): Promise<void> {
+    const normalizedTarget = channel === OtpChannel.EMAIL ? target.toLowerCase() : target;
+
+    const query = `
+      UPDATE otp_codes
+      SET used = true, updated_at = NOW()
+      WHERE lower(target) = lower($1) AND channel = $2
+    `;
+    await db.query(query, [normalizedTarget, channel]);
+  }
+
+  /**
+   * Supprime un OTP pour la cible + canal.
+   */
+  async deleteOtp(target: string, channel: OtpChannel): Promise<void> {
+    const normalizedTarget = channel === OtpChannel.EMAIL ? target.toLowerCase() : target;
+    const query = `DELETE FROM otp_codes WHERE lower(target) = lower($1) AND channel = $2`;
+    await db.query(query, [normalizedTarget, channel]);
   }
 
   // ==================== VERIFICATION TOKENS ====================

@@ -12,7 +12,8 @@ import {
   User,
   UserStatus,
   RoleType,
-  VerificationType
+  VerificationType,
+  OtpChannel
 } from './auth.model';
 import {
   hashPassword,
@@ -26,12 +27,14 @@ import {
   verifyRefreshToken
 } from '../../shared/utils/jwt.utils';
 import { generateOtp } from '../../shared/utils/generateOtp.utils';
-import { sendEmail } from '../../shared/utils/sendEmail';
+import { sendEmail, sendWelcomeEmail, sendOtpEmail } from '../../shared/utils/sendEmail';
 import { sendSMS } from '../../shared/utils/sendSms';
 import crypto from 'crypto';
 
 import { generateAuthTokens } from './helpers/generateAuthTokens.helper';
 import { Permission } from '../../shared/permissions/permissions';
+
+import { verifyGoogleToken, GoogleUserData } from './helpers/google.helper';
 
 export class AuthService {
   private repo: AuthRepository;
@@ -40,52 +43,102 @@ export class AuthService {
     this.repo = new AuthRepository();
   }
 
-  async register(data: RegisterDTO): Promise<TokenResponse> {
-    console.log("Register data:", data);
-    const existingEmail = await this.repo.findUserByEmail(data.email);
-    console.log("Existing email check:", existingEmail);
-    if (existingEmail) {
-      throw { statusCode: 400, message: 'Cet email est déjà utilisé' };
+  async register(data: RegisterDTO, method: string): Promise<TokenResponse> {
+    let user: User | null = null;
+
+    if (method === 'google') {
+      console.log('Registering with Google:', data);
+      const googleData = await verifyGoogleToken(data.token!);
+      console.log('Google Data:', googleData);
+
+      user = await this.repo.findUserByEmail(googleData.email);
+
+      if (!user) {
+        const role_id = await this.repo.getOrCreateRole(RoleType.TENANT, 'Locataire par défaut');
+
+        const tenantPermissions = [
+          Permission.USERS_READ_OWN,
+          Permission.USERS_UPDATE_OWN,
+          Permission.BOOKINGS_CREATE,
+          Permission.BOOKINGS_READ_OWN,
+        ];
+
+        for (const permission of tenantPermissions) {
+          const permission_id = await this.repo.getOrCreatePermission(permission);
+          await this.repo.linkRoleToPermission(role_id, permission_id);
+        }
+
+        user = await this.repo.createUser(
+          {
+            email: googleData.email,
+            password: "",
+            phone: "",
+          },
+          role_id,
+          ""
+        );
+
+        await this.repo.createUserProfile(user.id, {
+          first_name: googleData.first_name,
+          last_name: googleData.last_name,
+          preferred_language: 'fr'
+        });
+
+        await this.repo.updateEmailVerification(user.id);
+        await this.repo.updateUserStatus(user.id, UserStatus.ACTIVE);
+        await sendWelcomeEmail(googleData.email, googleData.first_name);
+
+      }
+
+      const tokens = generateAuthTokens(user);
+      await this.repo.saveRefreshToken(user.id, tokens.refresh_token, tokens.expiresAt);
+      return tokens;
     }
 
-    const existingPhone = await this.repo.findUserByPhone(data.phone);
-    if (existingPhone) {
-      throw { statusCode: 400, message: 'Ce numéro de téléphone est déjà utilisé' };
+    else{
+      if (data.email) {
+        const existingEmail = await this.repo.findUserByEmail(data.email);
+        if (existingEmail) throw { statusCode: 400, message: 'Cet email est déjà utilisé' };
+      } else if (data.phone) {
+        const existingPhone = await this.repo.findUserByPhone(data.phone);
+        if (existingPhone) throw { statusCode: 400, message: 'Ce numéro de téléphone est déjà utilisé' };
+      }
+
+      const hashedPassword = await hashPassword(data.password!);
+      const role_id = await this.repo.getOrCreateRole(RoleType.TENANT, 'Locataire par défaut');
+
+      const tenantPermissions = [
+        Permission.USERS_READ_OWN,
+        Permission.USERS_UPDATE_OWN,
+        Permission.BOOKINGS_CREATE,
+        Permission.BOOKINGS_READ_OWN,
+      ];
+
+      for (const permission of tenantPermissions) {
+        const permission_id = await this.repo.getOrCreatePermission(permission);
+        await this.repo.linkRoleToPermission(role_id, permission_id);
+      }
+
+      user = await this.repo.createUser(data, role_id, hashedPassword);
+      await this.repo.createUserProfile(user.id, data);
+      const {otp, expiration} = generateOtp();
+
+      if (method === 'email' && data.email){
+        await this.repo.saveOtp(data.email!, OtpChannel.EMAIL, otp, expiration, user.id);
+        await sendOtpEmail(data.email!, otp, {
+          purpose: 'votre code de vérification',
+          minutes: 10,
+          subject: 'Votre code de vérification (10 min)'
+        });
+      }else if (method === 'phone' && data.phone){
+        await this.repo.saveOtp(data.phone!, OtpChannel.PHONE, otp, expiration, user.id);
+      }
+
+      const tokens = generateAuthTokens(user);
+      await this.repo.saveRefreshToken(user.id, tokens.refresh_token, tokens.expiresAt);
+
+      return tokens;
     }
-
-    const hashedPassword = await hashPassword(data.password);
-
-    const role_id = await this.repo.getOrCreateRole(RoleType.TENANT, "Locataire par défaut");
-
-    const tenantPermissions = [
-      Permission.USERS_READ_OWN,
-      Permission.USERS_UPDATE_OWN,
-      Permission.BOOKINGS_CREATE,
-      Permission.BOOKINGS_READ_OWN,
-    ];
-
-    for (const permission of tenantPermissions) {
-      const permission_id = await this.repo.getOrCreatePermission(permission);
-      await this.repo.linkRoleToPermission(role_id, permission_id);
-    }
-
-
-    const user = await this.repo.createUser(data, role_id, hashedPassword);
-
-    await this.repo.createUserProfile(user.id, data);
-
-
-    // await this.sendEmailVerification(user.id, data.email);
-
-    // await this.sendPhoneVerification(data.phone);
-
-    // Generate tokens
-    const tokens = generateAuthTokens(user);
-
-    await this.repo.saveRefreshToken(user.id, tokens.refresh_token, tokens.expiresAt);
-
-
-    return tokens;
   }
 
 
@@ -350,7 +403,7 @@ export class AuthService {
     const { otp, expiration } = generateOtp();
 
     // Save OTP
-    await this.repo.saveOtp(phone, otp, expiration);
+    // await this.repo.saveOtp(phone, otp, expiration);
 
     // Send SMS
     await sendSMS({
@@ -361,39 +414,39 @@ export class AuthService {
 
   async verifyPhone(data: VerifyPhoneDTO): Promise<void> {
     // Find OTP
-    const otpRecord = await this.repo.findOtp(data.phone);
+    // const otpRecord = await this.repo.findOtp(data.phone);
 
-    if (!otpRecord) {
-      throw { statusCode: 400, message: 'Code OTP invalide ou expiré' };
-    }
+    // if (!otpRecord) {
+    //   throw { statusCode: 400, message: 'Code OTP invalide ou expiré' };
+    // }
 
-    // Check attempts
-    if (otpRecord.attempts >= 3) {
-      await this.repo.deleteOtp(data.phone);
-      throw { statusCode: 429, message: 'Trop de tentatives. Demandez un nouveau code' };
-    }
+    // // Check attempts
+    // if (otpRecord.attempts >= 3) {
+    //   await this.repo.deleteOtp(data.phone);
+    //   throw { statusCode: 429, message: 'Trop de tentatives. Demandez un nouveau code' };
+    // }
 
-    // Verify code
-    if (otpRecord.code !== data.code) {
-      await this.repo.incrementOtpAttempts(data.phone);
-      const remainingAttempts = 3 - (otpRecord.attempts + 1);
-      throw {
-        statusCode: 400,
-        message: `Code incorrect. ${remainingAttempts} tentatives restantes`
-      };
-    }
+    // // Verify code
+    // if (otpRecord.code !== data.code) {
+    //   await this.repo.incrementOtpAttempts(data.phone);
+    //   const remainingAttempts = 3 - (otpRecord.attempts + 1);
+    //   throw {
+    //     statusCode: 400,
+    //     message: `Code incorrect. ${remainingAttempts} tentatives restantes`
+    //   };
+    // }
 
-    // Find user by phone
-    const user = await this.repo.findUserByPhone(data.phone);
-    if (!user) {
-      throw { statusCode: 404, message: 'Utilisateur introuvable' };
-    }
+    // // Find user by phone
+    // const user = await this.repo.findUserByPhone(data.phone);
+    // if (!user) {
+    //   throw { statusCode: 404, message: 'Utilisateur introuvable' };
+    // }
 
-    // Update user
-    await this.repo.updatePhoneVerification(user.id);
+    // // Update user
+    // await this.repo.updatePhoneVerification(user.id);
 
-    // Delete OTP
-    await this.repo.deleteOtp(data.phone);
+    // // Delete OTP
+    // await this.repo.deleteOtp(data.phone);
   }
 
   async resendPhoneVerification(phone: string): Promise<void> {
@@ -451,7 +504,7 @@ export class AuthService {
     } else {
       // Send SMS with OTP instead of URL
       const { otp, expiration } = generateOtp();
-      await this.repo.saveOtp(user.phone, otp, expiration);
+      // await this.repo.saveOtp(user.phone, otp, expiration);
       await sendSMS({
         to: user.phone,
         message: `Votre code de réinitialisation TogoLocation: ${otp}. Valide 10 minutes.`

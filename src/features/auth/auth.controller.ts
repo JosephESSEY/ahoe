@@ -20,20 +20,46 @@ export class AuthController {
   }
 
   async register(req: Request, res: Response, next: NextFunction) {
-    try {
-      const requiredFields = ['email', 'phone', 'password', 'first_name', 'last_name'];
-      const missingFields = getMissingFields(req.body, requiredFields);
+  try {
+    const { method } = req.body;
 
-      if (missingFields.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Champs manquants',
-          missingFields
-        });
-      }
+    if (!method) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le champ "method" est requis (email, phone, google, facebook).'
+      });
+    }
 
-      const data: RegisterDTO = {
+    let requiredFields: string[] = ['first_name', 'last_name', 'password'];
+
+    if (method === 'email') {
+      requiredFields.push('email');
+    } else if (method === 'phone') {
+      requiredFields.push('phone');
+    }
+
+    const missingFields = getMissingFields(req.body, requiredFields);
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Champs manquants',
+        missingFields
+      });
+    }
+
+    let data: RegisterDTO | null = null;
+
+    if (method === 'email') {
+      data = {
         email: req.body.email,
+        password: req.body.password,
+        first_name: req.body.first_name,
+        last_name: req.body.last_name,
+        preferred_language: req.body.preferred_language || 'fr',
+        referral_code: req.body.referral_code
+      };
+    } else if (method === 'phone') {
+      data = {
         phone: req.body.phone,
         password: req.body.password,
         first_name: req.body.first_name,
@@ -41,22 +67,45 @@ export class AuthController {
         preferred_language: req.body.preferred_language || 'fr',
         referral_code: req.body.referral_code
       };
+    } else if (method === 'google' || method === 'facebook') {
+      // Cas d'inscription via un fournisseur externe
+      data = {
+    token: req.body.token, // 👈 ajoute cette ligne
+    first_name: req.body.first_name,
+    last_name: req.body.last_name,
+    preferred_language: req.body.preferred_language || 'fr',
+    referral_code: req.body.referral_code
+  };
 
-      const result = await this.authService.register(data);
-
-      res.status(201).json({
-        success: true,
-        message: 'Inscription réussie. Vérifiez votre email et téléphone.',
-        data: result
-      });
-    } catch (error: any) {
-      res.status(error.statusCode || 500).json({
+  if (!req.body.token) {
+    return res.status(400).json({
+      success: false,
+      message: 'Le token d’authentification du fournisseur est requis (Google/Facebook).'
+    });
+  }
+      
+    } else {
+      return res.status(400).json({
         success: false,
-        message: error.message || 'Server error',
-        error: error.details || undefined
+        message: `Méthode d'inscription invalide : ${method}`
       });
     }
+
+    const result = await this.authService.register(data, method);
+
+    res.status(201).json({
+      success: true,
+      message: 'Inscription réussie. Vérifiez votre email et téléphone.',
+      data: result
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Erreur serveur',
+      error: error.details || undefined
+    });
   }
+}
 
   // ==================== LOGIN ====================
 

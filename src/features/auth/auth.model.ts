@@ -60,12 +60,6 @@ export enum RoleType {
   SUPER_ADMIN = 'super_admin'
 }
 
-export interface OtpCode {
-  phone: string;
-  code: string;
-  expires_at: Date;
-  attempts: number;
-}
 
 export interface RefreshToken {
   id: string;
@@ -107,14 +101,16 @@ export interface LoginHistory {
 
 // DTOs (Data Transfer Objects)
 export interface RegisterDTO {
-  email: string;
-  phone: string;
-  password: string;
-  first_name: string;
-  last_name: string;
+  email?: string;
+  phone?: string | null;
+  password?: string | null; // modifié pour Google OAuth
+  first_name?: string;
+  last_name?: string;
   preferred_language?: string;
   referral_code?: string;
+  token?: string; // ✅ ajouté pour Google OAuth
 }
+
 
 export interface LoginDTO {
   identifier: string; // Email ou téléphone
@@ -168,4 +164,26 @@ export interface TokenResponse {
   expires_in: number;
   token_type: string;
   expiresAt: Date;
+}
+
+
+// ...existing code...
+export enum OtpChannel {
+  EMAIL = 'email',
+  PHONE = 'phone'
+}
+
+export interface OtpCode {
+  id: string;
+  user_id?: string | null;
+  channel: OtpChannel;
+  target: string;                     // email (minuscule) ou téléphone (E.164)
+  code: string;                       // OTP (ex: "123456") ou token
+  purpose?: string;                   // ex: 'email_verification', 'phone_reset', 'login', ...
+  attempts: number;
+  max_attempts: number;
+  used: boolean;
+  expires_at?: Date;
+  created_at: Date;
+  updated_at: Date;
 }
