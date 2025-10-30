@@ -175,7 +175,11 @@ export class AuthController {
         }
       });
     } catch (error: any) {
-      next(error);
+       res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Erreur serveur',
+        error: error.details || "undefined"
+      });
     }
   }
 

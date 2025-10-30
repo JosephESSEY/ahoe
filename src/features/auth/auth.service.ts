@@ -47,9 +47,7 @@ export class AuthService {
     let user: User | null = null;
 
     if (method === 'google') {
-      console.log('Registering with Google:', data);
       const googleData = await verifyGoogleToken(data.token!);
-      console.log('Google Data:', googleData);
 
       user = await this.repo.findUserByEmail(googleData.email);
 
@@ -172,8 +170,13 @@ export class AuthService {
       };
     }
 
+    if(user.password_hash === null){
+      await this.logFailedLogin(user.id, metadata, 'Ce compte utilise une authentification google');
+      throw { statusCode: 401, message: 'Identifiants invalides' };
+    }
+
     // Check password
-    const isPasswordValid = await comparePassword(data.password, user.password!);
+    const isPasswordValid = await comparePassword(data.password, user.password_hash!);
 
     if (!isPasswordValid) {
       // Increment login attempts
@@ -197,12 +200,18 @@ export class AuthService {
     }
 
     // Check account status
+    if (user.status === UserStatus.PENDING_VERIFICATION) {
+      throw { statusCode: 403, message: 'Veuillez vérifier votre compte' };
+    }
+
     if (user.status === UserStatus.SUSPENDED) {
       throw { statusCode: 403, message: 'Compte suspendu. Contactez le support' };
     }
+    
     if (user.status === UserStatus.DELETED) {
       throw { statusCode: 403, message: 'Compte supprimé' };
     }
+    
 
     // Update last login
     await this.repo.updateLastLogin(user.id);
@@ -218,6 +227,7 @@ export class AuthService {
 
     // Generate tokens
     const tokens = await generateAuthTokens(user, data.remember_me);
+    await this.repo.saveRefreshToken(user.id, tokens.refresh_token, tokens.expiresAt);
 
     return tokens;
   }
@@ -562,7 +572,7 @@ export class AuthService {
     }
 
     // Verify current password
-    const isCurrentPasswordValid = await comparePassword(data.current_password, user.password!);
+    const isCurrentPasswordValid = await comparePassword(data.current_password, user.password_hash!);
 
     if (!isCurrentPasswordValid) {
       throw { statusCode: 401, message: 'Mot de passe actuel incorrect' };
@@ -572,7 +582,7 @@ export class AuthService {
     await this.validatePassword(data.new_password);
 
     // Ensure new password is different
-    const isSamePassword = await comparePassword(data.new_password, user.password!);
+    const isSamePassword = await comparePassword(data.new_password, user.password_hash!);
     if (isSamePassword) {
       throw { statusCode: 400, message: 'Le nouveau mot de passe doit être différent' };
     }

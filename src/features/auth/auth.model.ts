@@ -2,7 +2,7 @@ export interface User {
   id: string;
   email: string;
   phone: string;
-  password?: string;
+  password_hash?: string;
   status: UserStatus;
   email_verified: boolean;
   phone_verified: boolean;

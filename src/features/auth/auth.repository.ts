@@ -279,7 +279,8 @@ export class AuthRepository {
           max_attempts = $3,
           user_id = $4,
           purpose = $5,
-          updated_at = NOW()
+          updated_at = NOW(),
+          used = false
       WHERE lower(target) = lower($6) AND channel = $7
       RETURNING *
     `;

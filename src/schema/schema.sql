@@ -183,6 +183,20 @@ CREATE INDEX IF NOT EXISTS idx_otp_codes_code ON otp_codes (code);
 CREATE INDEX IF NOT EXISTS idx_otp_codes_expires_at ON otp_codes (expires_at);
 
 
+-- Historique des connexions
+CREATE TABLE IF NOT EXISTS login_history (
+  login_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  ip_address VARCHAR(45), -- Compatible IPv4 et IPv6
+  user_agent TEXT,
+  device_info JSONB,
+  location JSONB,
+  success BOOLEAN DEFAULT TRUE,
+  failure_reason TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+
 
 -- Catégories de propriété
 CREATE TABLE property_categories (
