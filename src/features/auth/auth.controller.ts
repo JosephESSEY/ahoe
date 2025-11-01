@@ -183,6 +183,50 @@ export class AuthController {
     }
   }
 
+  async loginWithGoogle(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { token } = req.body;
+      if (!token) {
+        return res.status(400).json({
+          success: false,
+          message: 'token est requis'
+        });
+      }
+
+      const metadata = {
+        ip_address: req.ip || req.connection.remoteAddress || 'unknown',
+        user_agent: req.headers['user-agent'] || 'unknown',
+        device_info: {
+          platform: req.headers['x-platform'] || 'web',
+          app_version: req.headers['x-app-version'] || 'unknown'
+        }
+      };
+      const result = await this.authService.loginWithGoogle(token, metadata);
+      // Set refresh token as httpOnly cookie
+      res.cookie('refresh_token', result.refresh_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000
+      });
+      res.status(200).json({
+        success: true,
+        message: 'Connexion réussie',
+        data: {
+          access_token: result.access_token,
+          expires_in: result.expires_in,
+          token_type: result.token_type,
+        }
+      });
+    } catch (error: any) {
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Erreur serveur',
+        error: error.details || "undefined"
+      });
+    }
+  }
+
   // ==================== SOCIAL AUTH ====================
 
   async socialAuth(req: Request, res: Response, next: NextFunction) {

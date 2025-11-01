@@ -132,6 +132,8 @@ router.post('/verify-otp', authController.verifyOtp.bind(authController));
  */
 router.post('/login', authController.login.bind(authController));
 
+router.post('/login-with-google', authController.loginWithGoogle.bind(authController));
+
 /**
  * @swagger
  * /auth/social:

@@ -52,7 +52,7 @@ export class AuthService {
       user = await this.repo.findUserByEmail(googleData.email);
 
       if (!user) {
-        const role_id = await this.repo.getOrCreateRole(RoleType.TENANT, 'Locataire par défaut');
+        const role_id = await this.repo.getOrCreateRole(RoleType.TENANT, 'Locataire');
 
         const tenantPermissions = [
           Permission.USERS_READ_OWN,
@@ -103,7 +103,7 @@ export class AuthService {
       }
 
       const hashedPassword = await hashPassword(data.password!);
-      const role_id = await this.repo.getOrCreateRole(RoleType.TENANT, 'Locataire par défaut');
+      const role_id = await this.repo.getOrCreateRole(RoleType.TENANT, 'Locataire');
 
       const tenantPermissions = [
         Permission.USERS_READ_OWN,
@@ -229,6 +229,73 @@ export class AuthService {
     const tokens = await generateAuthTokens(user, data.remember_me);
     await this.repo.saveRefreshToken(user.id, tokens.refresh_token, tokens.expiresAt);
 
+    return tokens;
+  }
+
+  async loginWithGoogle(token: string, metadata: {
+    ip_address: string;
+    user_agent: string;
+    device_info: any;
+  }): Promise<TokenResponse> {
+    const googleData = await verifyGoogleToken(token);
+    let user = await this.repo.findUserByEmail(googleData.email);
+
+    if (!user) {
+        const role_id = await this.repo.getOrCreateRole(RoleType.TENANT, 'Locataire');
+        const tenantPermissions = [
+          Permission.USERS_READ_OWN,
+          Permission.USERS_UPDATE_OWN,
+          Permission.BOOKINGS_CREATE,
+          Permission.BOOKINGS_READ_OWN,
+        ];
+
+        for (const permission of tenantPermissions) {
+          const permission_id = await this.repo.getOrCreatePermission(permission);
+          await this.repo.linkRoleToPermission(role_id, permission_id);
+        }
+
+        user = await this.repo.createUser(
+          {
+            email: googleData.email,
+            password: "",
+            phone: "",
+          },
+          role_id,
+          ""
+        );
+
+        await this.repo.createUserProfile(user.id, {
+          first_name: googleData.first_name,
+          last_name: googleData.last_name,
+          preferred_language: 'fr'
+        });
+
+        await this.repo.updateEmailVerification(user.id);
+        await this.repo.updateUserStatus(user.id, UserStatus.ACTIVE);
+        await this.repo.updateLastLogin(user.id);
+        // Log successful login
+        await this.repo.saveLoginHistory({
+          user_id: user.id,
+          ip_address: metadata.ip_address,
+          user_agent: metadata.user_agent,
+          device_info: metadata.device_info,
+          success: true
+        });
+        await sendWelcomeEmail(googleData.email, googleData.first_name);
+    }
+    // Update last login
+    await this.repo.updateLastLogin(user.id);
+    // Log successful login
+    await this.repo.saveLoginHistory({
+      user_id: user.id,
+      ip_address: metadata.ip_address,
+      user_agent: metadata.user_agent,
+      device_info: metadata.device_info,
+      success: true
+    });
+    // Generate tokens
+    const tokens = await generateAuthTokens(user);
+    await this.repo.saveRefreshToken(user.id, tokens.refresh_token, tokens.expiresAt);
     return tokens;
   }
 
