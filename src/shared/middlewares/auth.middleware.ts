@@ -17,7 +17,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
 
     const decoded = verifyAccessToken(token);
 
-    const userQuery = `SELECT id, email, phone, status, role FROM users WHERE id = $1`;
+    const userQuery = `SELECT id, email, phone, status, role_id FROM users WHERE id = $1`;
     const userResult = await db.query(userQuery, [decoded.userId]);
     const user = userResult.rows[0];
 
@@ -35,11 +35,15 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
       });
     }
 
+    const roleQuery = `SELECT role_name FROM roles WHERE role_id = $1`;
+    const roleResult = await db.query(roleQuery, [user.role_id]);
+    const role = roleResult.rows[0];
+
     req.user = {
-      id: user.id,
-      email: user.email,
-      phone: user.phone,
-      role: user.role
+      id: decoded.userId,
+      email: decoded.email,
+      phone: decoded.phone,
+      role: role.role_name
     };
 
     // Set user context for Row Level Security
@@ -47,6 +51,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
 
     next();
   } catch (error: any) {
+    console.log(error);
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({
         success: false,

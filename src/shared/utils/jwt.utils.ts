@@ -5,13 +5,15 @@ const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET!;
 
 export interface TokenPayload {
   userId: string;
+  email: string;
+  phone: string;
   role: string;
   type: 'access' | 'refresh';
 }
 
-export const generateAccessToken = (userId: string, role: string): string => {
+export const generateAccessToken = (userId: string, email: string = '', phone: string = '', role: string): string => {
   return jwt.sign(
-    { userId, role, type: 'access' },
+    { userId : userId, email: email, phone: phone, role: role, type: 'access' },
     ACCESS_TOKEN_SECRET,
     { expiresIn: '15m' }
   );

@@ -10,7 +10,7 @@ import {
 
 export function generateAuthTokens(user: User, rememberMe: boolean = false): TokenResponse{
     // Generate access token (15 minutes)
-    const accessToken = generateAccessToken(user.id, user.role);
+    const accessToken = generateAccessToken(user.id, user.email, user.phone, user.role);
 
     // Generate refresh token (7 days or 30 days if remember_me)
     const refreshToken = generateRefreshToken(user.id, rememberMe);

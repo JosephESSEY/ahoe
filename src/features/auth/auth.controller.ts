@@ -78,20 +78,20 @@ export class AuthController {
   };
 
   if (!req.body.token) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       message: 'Le token d’authentification du fournisseur est requis (Google/Facebook).'
     });
   }
       
     } else {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: `Méthode d'inscription invalide : ${method}`
       });
     }
 
-    const result = await this.authService.register(data, method);
+    const result = await this.authService.register(data!, method);
 
     res.status(201).json({
       success: true,
@@ -102,7 +102,6 @@ export class AuthController {
     res.status(error.statusCode || 500).json({
       success: false,
       message: error.message || 'Erreur serveur',
-      error: error.details || undefined
     });
   }
 }
@@ -112,15 +111,15 @@ export class AuthController {
     const { channel, target, code, purpose } = req.body;
 
     if (!channel || !target || !code) {
-      return res.status(400).json({ success: false, message: 'channel, target et code sont requis' });
+      res.status(400).json({ success: false, message: 'channel, target et code sont requis' });
     }
 
     const result = await this.authService.verifyOtp({ channel, target, code, purpose });
-    return res.status(200).json(result);
+    res.status(200).json(result);
   } catch (err: any) {
     const status = err?.statusCode || 500;
     const message = err?.message || 'Erreur serveur';
-    return res.status(status).json({ success: false, message });
+    res.status(status).json({ success: false, message });
   }
   }
 
@@ -178,7 +177,6 @@ export class AuthController {
        res.status(error.statusCode || 500).json({
         success: false,
         message: error.message || 'Erreur serveur',
-        error: error.details || "undefined"
       });
     }
   }
@@ -222,7 +220,6 @@ export class AuthController {
       res.status(error.statusCode || 500).json({
         success: false,
         message: error.message || 'Erreur serveur',
-        error: error.details || "undefined"
       });
     }
   }
@@ -260,11 +257,9 @@ export class AuthController {
         }
       });
     } catch (error: any) {
-      console.error('Error in refreshToken:', error);
       res.status(error.statusCode || 500).json({
         success: false,
         message: error.message || 'Erreur serveur',
-        error: error.details || "undefined"
       });
     }
   }
@@ -283,7 +278,6 @@ export class AuthController {
 
       await this.authService.logout(userId, refreshToken);
 
-      // Clear refresh token cookie
       res.clearCookie('refresh_token');
 
       res.status(200).json({
@@ -291,13 +285,17 @@ export class AuthController {
         message: 'Déconnexion réussie'
       });
     } catch (error: any) {
-      next(error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Erreur serveur',
+      });
     }
   }
 
   async logoutAllDevices(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user?.id;
+      // const refreshToken = req.cookies.refresh_token || req.body.refresh_token;
 
       if (!userId) {
         return res.status(401).json({
@@ -308,7 +306,6 @@ export class AuthController {
 
       await this.authService.logoutAllDevices(userId);
 
-      // Clear refresh token cookie
       res.clearCookie('refresh_token');
 
       res.status(200).json({

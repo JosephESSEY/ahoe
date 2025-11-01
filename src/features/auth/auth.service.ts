@@ -342,7 +342,7 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await this.repo.saveRefreshToken(user.id, newRefreshToken, expiresAt);
 
-    const accessToken = generateAccessToken(user.id, user.role);
+    const accessToken = generateAccessToken(user.id, user.email, user.phone, user.role);
 
     return {
       access_token: accessToken,
@@ -354,13 +354,11 @@ export class AuthService {
 
   async logout(userId: string, refreshToken?: string): Promise<void> {
     if (refreshToken) {
-      // Revoke specific token
       const tokenRecord = await this.repo.findRefreshToken(refreshToken);
       if (tokenRecord) {
         await this.repo.revokeRefreshToken(tokenRecord.id);
       }
     } else {
-      // Revoke all tokens
       await this.repo.revokeAllUserTokens(userId);
     }
   }
