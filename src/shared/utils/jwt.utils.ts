@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 
-const ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || 'access-secret-key';
-const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh-secret-key';
+const ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET!;
+const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET!;
 
 export interface TokenPayload {
   userId: string;

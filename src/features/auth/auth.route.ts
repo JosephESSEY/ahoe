@@ -7,7 +7,7 @@ const router = Router();
 const authController = new AuthController();
 
 // Rate limiters
-// cons = rateLimiterMiddleware({ windowMs: 15 * 60 * 1000, max: 5 }); // 5 req/15min
+// const = rateLimiterMiddleware({ windowMs: 15 * 60 * 1000, max: 5 }); // 5 req/15min
 // const normalLimiter = rateLimiterMiddleware({ windowMs: 15 * 60 * 1000, max: 100 }); // 100 req/15min
 
 /**
@@ -63,40 +63,43 @@ const authController = new AuthController();
 router.post('/register', authController.register.bind(authController));
 
 
-/** * @swagger
+/**
+ * @swagger
  * /auth/verify-otp:
  *   post:
- *   summary: Vérifier le code OTP
- *  tags: [Auth]
- *   requestBody:
- *     required: true
- *    content:
- *      application/json:
- *       schema:
- *        type: object
- *        required:
- *         - target
- *        - channel
- *        - code
- *       properties:
- *        target:
- *        type: string
- *       description: Email ou téléphone selon le canal
- *       channel:
- *       type: string
- *      enum: [email, phone]
- *    code:
- *    type: string
- *  description: Code OTP reçu
- *  responses:
- *      200:
- *    description: OTP vérifié avec succès
- *    400:
- *   description: Code OTP invalide ou expiré
- *  429:
- *   description: Trop de tentatives
- */ 
+ *     summary: Vérifier le code OTP
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - target
+ *               - channel
+ *               - code
+ *             properties:
+ *               target:
+ *                 type: string
+ *                 description: Email ou téléphone selon le canal
+ *               channel:
+ *                 type: string
+ *                 enum: [email, phone]
+ *                 description: Canal utilisé pour l’envoi de l’OTP
+ *               code:
+ *                 type: string
+ *                 description: Code OTP reçu par l’utilisateur
+ *     responses:
+ *       200:
+ *         description: OTP vérifié avec succès
+ *       400:
+ *         description: Code OTP invalide ou expiré
+ *       429:
+ *         description: Trop de tentatives
+ */
 router.post('/verify-otp', authController.verifyOtp.bind(authController));
+
 
 /**
  * @swagger
@@ -134,36 +137,6 @@ router.post('/login', authController.login.bind(authController));
 
 router.post('/login-with-google', authController.loginWithGoogle.bind(authController));
 
-/**
- * @swagger
- * /auth/social:
- *   post:
- *     summary: Authentification via réseaux sociaux
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - provider
- *               - access_token
- *             properties:
- *               provider:
- *                 type: string
- *                 enum: [google, facebook]
- *               access_token:
- *                 type: string
- *               id_token:
- *                 type: string
- *     responses:
- *       200:
- *         description: Connexion réussie
- *       400:
- *         description: Token invalide
- */
-router.post('/social', authController.socialAuth.bind(authController));
 
 /**
  * @swagger
@@ -220,136 +193,6 @@ router.post('/logout', authMiddleware, authController.logout.bind(authController
  *         description: Non authentifié
  */
 router.post('/logout-all', authMiddleware, authController.logoutAllDevices.bind(authController));
-
-/**
- * @swagger
- * /auth/verify-email:
- *   get:
- *     summary: Vérifier l'email via token
- *     tags: [Auth]
- *     parameters:
- *       - in: query
- *         name: token
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Email vérifié
- *       400:
- *         description: Token invalide ou expiré
- */
-router.get('/verify-email', authController.verifyEmail.bind(authController));
-
-/**
- * @swagger
- * /auth/resend-email-verification:
- *   post:
- *     summary: Renvoyer l'email de vérification
- *     tags: [Auth]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Email renvoyé
- *       400:
- *         description: Email déjà vérifié
- *       401:
- *         description: Non authentifié
- */
-router.post(
-  '/resend-email-verification',
-  authMiddleware,
-// ,
-  authController.resendEmailVerification.bind(authController)
-);
-
-/**
- * @swagger
- * /auth/send-phone-verification:
- *   post:
- *     summary: Envoyer le code de vérification SMS
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - phone
- *             properties:
- *               phone:
- *                 type: string
- *     responses:
- *       200:
- *         description: Code envoyé
- *       400:
- *         description: Numéro invalide
- */
-router.post(
-  '/send-phone-verification',
-// ,
-  authController.sendPhoneVerification.bind(authController)
-);
-
-/**
- * @swagger
- * /auth/verify-phone:
- *   post:
- *     summary: Vérifier le téléphone avec code OTP
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - phone
- *               - code
- *             properties:
- *               phone:
- *                 type: string
- *               code:
- *                 type: string
- *     responses:
- *       200:
- *         description: Téléphone vérifié
- *       400:
- *         description: Code invalide
- *       429:
- *         description: Trop de tentatives
- */
-router.post('/verify-phone', authController.verifyPhone.bind(authController));
-
-/**
- * @swagger
- * /auth/resend-phone-verification:
- *   post:
- *     summary: Renvoyer le code de vérification SMS
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - phone
- *             properties:
- *               phone:
- *                 type: string
- *     responses:
- *       200:
- *         description: Code renvoyé
- *       400:
- *         description: Téléphone déjà vérifié
- */
-router.post(
-  '/resend-phone-verification',
-  authController.resendPhoneVerification.bind(authController)
-);
 
 /**
  * @swagger

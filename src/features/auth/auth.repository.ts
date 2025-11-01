@@ -448,7 +448,7 @@ export class AuthRepository {
 
   async revokeRefreshToken(tokenId: string, replacedBy?: string): Promise<void> {
     const query = `
-      UPDATE refresh_tokens 
+      UPDATE refresh_tokens
       SET revoked_at = NOW(), replaced_by = $1
       WHERE id = $2
     `;

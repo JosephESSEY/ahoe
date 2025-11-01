@@ -132,13 +132,14 @@ export class AuthService {
         await this.repo.saveOtp(data.phone!, OtpChannel.PHONE, otp, expiration, user.id);
       }
 
-      const tokens = generateAuthTokens(user);
-      await this.repo.saveRefreshToken(user.id, tokens.refresh_token, tokens.expiresAt);
-
       if (!user.email_verified && method === 'email' && data.email) {
         return { success: true, message: 'Un OTP vous a été envoyé. Veuillez le valider.' };
       }else if( !user.phone_verified && method === 'phone' && data.phone){
         return { success: true, message: 'Un OTP vous a été envoyé. Veuillez le valider.' };
+      }else{
+        const tokens = generateAuthTokens(user);
+        await this.repo.saveRefreshToken(user.id, tokens.refresh_token, tokens.expiresAt);
+        return tokens;
       }
 
     }
@@ -316,81 +317,37 @@ export class AuthService {
     }
   }
 
-  // ==================== SOCIAL AUTH ====================
-
-  async socialAuth(data: SocialAuthDTO): Promise<TokenResponse> {
-    // Verify token with provider
-    const socialUser = await this.verifySocialToken(data);
-
-    // Find or create user
-    let user = await this.repo.findUserByEmail(socialUser.email);
-
-    if (!user) {
-      // Create new user from social data
-      const registerData: RegisterDTO = {
-        email: socialUser.email,
-        phone: socialUser.phone || '', // May need to be collected separately
-        password: crypto.randomBytes(32).toString('hex'), // Random password
-        first_name: socialUser.first_name,
-        last_name: socialUser.last_name,
-        preferred_language: 'fr'
-      };
-
-      // user = await this.repo.createUser(registerData, await hashPassword(registerData.password));
-      // await this.repo.createUserProfile(user.id, registerData);
-
-      // Auto-verify email for social accounts
-      // await this.repo.updateEmailVerification(user.id);
-    }
-
-    // Generate tokens
-    const tokens = await generateAuthTokens(user!);
-
-    return tokens;
-  }
-
-  private async verifySocialToken(data: SocialAuthDTO): Promise<any> {
-    // Implementation depends on provider
-    // For Google, verify with Google OAuth API
-    // For Facebook, verify with Facebook Graph API
-    throw new Error('Social auth not fully implemented');
-  }
-
   // ==================== TOKEN MANAGEMENT ====================
 
   async refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
-    // Verify refresh token
+
     const decoded = verifyRefreshToken(refreshToken);
 
-    // Find token in database
     const tokenRecord = await this.repo.findRefreshToken(refreshToken);
 
     if (!tokenRecord) {
       throw { statusCode: 401, message: 'Refresh token invalide' };
     }
 
-    // Find user
     const user = await this.repo.findUserById(tokenRecord.user_id);
+
 
     if (!user) {
       throw { statusCode: 401, message: 'Utilisateur introuvable' };
     }
 
-    // Revoke old token
     const newRefreshToken = generateRefreshToken(user.id, false);
     await this.repo.revokeRefreshToken(tokenRecord.id, newRefreshToken);
 
-    // Save new refresh token
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await this.repo.saveRefreshToken(user.id, newRefreshToken, expiresAt);
 
-    // Generate new access token
     const accessToken = generateAccessToken(user.id, user.role);
 
     return {
       access_token: accessToken,
       refresh_token: newRefreshToken,
-      expires_in: 900, // 15 minutes
+      expires_in: 900,
       token_type: 'Bearer',
       expiresAt: expiresAt};
   }
@@ -414,134 +371,20 @@ export class AuthService {
 
   // ==================== EMAIL VERIFICATION ====================
 
-  async sendEmailVerification(userId: string, email: string): Promise<void> {
-    // Generate token
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    // Save token
-    await this.repo.createVerificationToken(userId, token, VerificationType.EMAIL, expiresAt);
+  // async resendEmailVerification(userId: string): Promise<void> {
+  //   const user = await this.repo.findUserById(userId);
 
-    // Send email
-    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
-    await sendEmail({
-      to: email,
-      subject: 'Vérifiez votre email - TogoLocation',
-      template: 'email-verification',
-      context: {
-        verificationUrl,
-        expiresIn: '24 heures'
-      }
-    });
-  }
+  //   if (!user) {
+  //     throw { statusCode: 404, message: 'Utilisateur introuvable' };
+  //   }
 
-  async verifyEmail(data: VerifyEmailDTO): Promise<void> {
-    
-    const tokenRecord = await this.repo.findVerificationToken(data.token, VerificationType.EMAIL);
+  //   if (user.email_verified) {
+  //     throw { statusCode: 400, message: 'Email déjà vérifié' };
+  //   }
 
-    if (!tokenRecord) {
-      throw { statusCode: 400, message: 'Token de vérification invalide ou expiré' };
-    }
-
-    // Update user
-    await this.repo.updateEmailVerification(tokenRecord.user_id);
-
-    // Mark token as used
-
-    // Send welcome email
-    const user = await this.repo.findUserById(tokenRecord.user_id);
-    if (user) {
-      await sendEmail({
-        to: user.email,
-        subject: 'Bienvenue sur TogoLocation!',
-        template: 'welcome',
-        context: {
-          firstName: (await this.repo.findUserProfile(user.id))?.first_name
-        }
-      });
-    }
-  }
-
-  async resendEmailVerification(userId: string): Promise<void> {
-    const user = await this.repo.findUserById(userId);
-
-    if (!user) {
-      throw { statusCode: 404, message: 'Utilisateur introuvable' };
-    }
-
-    if (user.email_verified) {
-      throw { statusCode: 400, message: 'Email déjà vérifié' };
-    }
-
-    await this.sendEmailVerification(userId, user.email);
-  }
-
-  // ==================== PHONE VERIFICATION ====================
-
-  async sendPhoneVerification(phone: string): Promise<void> {
-    // Generate OTP
-    const { otp, expiration } = generateOtp();
-
-    // Save OTP
-    // await this.repo.saveOtp(phone, otp, expiration);
-
-    // Send SMS
-    await sendSMS({
-      to: phone,
-      message: `Votre code de vérification TogoLocation est: ${otp}. Valide pendant 10 minutes.`
-    });
-  }
-
-  async verifyPhone(data: VerifyPhoneDTO): Promise<void> {
-    // Find OTP
-    // const otpRecord = await this.repo.findOtp(data.phone);
-
-    // if (!otpRecord) {
-    //   throw { statusCode: 400, message: 'Code OTP invalide ou expiré' };
-    // }
-
-    // // Check attempts
-    // if (otpRecord.attempts >= 3) {
-    //   await this.repo.deleteOtp(data.phone);
-    //   throw { statusCode: 429, message: 'Trop de tentatives. Demandez un nouveau code' };
-    // }
-
-    // // Verify code
-    // if (otpRecord.code !== data.code) {
-    //   await this.repo.incrementOtpAttempts(data.phone);
-    //   const remainingAttempts = 3 - (otpRecord.attempts + 1);
-    //   throw {
-    //     statusCode: 400,
-    //     message: `Code incorrect. ${remainingAttempts} tentatives restantes`
-    //   };
-    // }
-
-    // // Find user by phone
-    // const user = await this.repo.findUserByPhone(data.phone);
-    // if (!user) {
-    //   throw { statusCode: 404, message: 'Utilisateur introuvable' };
-    // }
-
-    // // Update user
-    // await this.repo.updatePhoneVerification(user.id);
-
-    // // Delete OTP
-    // await this.repo.deleteOtp(data.phone);
-  }
-
-  async resendPhoneVerification(phone: string): Promise<void> {
-    const user = await this.repo.findUserByPhone(phone);
-
-    if (!user) {
-      throw { statusCode: 404, message: 'Numéro de téléphone introuvable' };
-    }
-
-    if (user.phone_verified) {
-      throw { statusCode: 400, message: 'Téléphone déjà vérifié' };
-    }
-
-    await this.sendPhoneVerification(phone);
-  }
+  //   await this.sendEmailVerification(userId, user.email);
+  // }
 
   // ==================== PASSWORD RESET ====================
 

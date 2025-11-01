@@ -227,51 +227,6 @@ export class AuthController {
     }
   }
 
-  // ==================== SOCIAL AUTH ====================
-
-  async socialAuth(req: Request, res: Response, next: NextFunction) {
-    try {
-      const requiredFields = ['provider', 'access_token'];
-      const missingFields = getMissingFields(req.body, requiredFields);
-
-      if (missingFields.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Champs manquants',
-          missingFields
-        });
-      }
-
-      const data: SocialAuthDTO = {
-        provider: req.body.provider,
-        access_token: req.body.access_token,
-        id_token: req.body.id_token
-      };
-
-      const result = await this.authService.socialAuth(data);
-
-      // Set refresh token as httpOnly cookie
-      res.cookie('refresh_token', result.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000
-      });
-
-      res.status(200).json({
-        success: true,
-        message: 'Connexion réussie',
-        data: {
-          access_token: result.access_token,
-          expires_in: result.expires_in,
-          token_type: result.token_type,
-        }
-      });
-    } catch (error: any) {
-      next(error);
-    }
-  }
-
   // ==================== TOKEN MANAGEMENT ====================
 
   async refreshToken(req: Request, res: Response, next: NextFunction) {
@@ -305,7 +260,12 @@ export class AuthController {
         }
       });
     } catch (error: any) {
-      next(error);
+      console.error('Error in refreshToken:', error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Erreur serveur',
+        error: error.details || "undefined"
+      });
     }
   }
 
@@ -360,128 +320,29 @@ export class AuthController {
     }
   }
 
-  // ==================== EMAIL VERIFICATION ====================
+ 
+  // async resendEmailVerification(req: Request, res: Response, next: NextFunction) {
+  //   try {
+  //     const userId = req.user?.id;
 
-  async verifyEmail(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { token } = req.query;
+  //     if (!userId) {
+  //       return res.status(401).json({
+  //         success: false,
+  //         message: 'Non authentifié'
+  //       });
+  //     }
 
-      if (!token || typeof token !== 'string') {
-        return res.status(400).json({
-          success: false,
-          message: 'Token manquant'
-        });
-      }
+  //     await this.authService.resendEmailVerification(userId);
 
-      const data: VerifyEmailDTO = { token };
+  //     res.status(200).json({
+  //       success: true,
+  //       message: 'Email de vérification renvoyé'
+  //     });
+  //   } catch (error: any) {
+  //     next(error);
+  //   }
+  // }
 
-      await this.authService.verifyEmail(data);
-
-      res.status(200).json({
-        success: true,
-        message: 'Email vérifié avec succès'
-      });
-    } catch (error: any) {
-      next(error);
-    }
-  }
-
-  async resendEmailVerification(req: Request, res: Response, next: NextFunction) {
-    try {
-      const userId = req.user?.id;
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: 'Non authentifié'
-        });
-      }
-
-      await this.authService.resendEmailVerification(userId);
-
-      res.status(200).json({
-        success: true,
-        message: 'Email de vérification renvoyé'
-      });
-    } catch (error: any) {
-      next(error);
-    }
-  }
-
-  // ==================== PHONE VERIFICATION ====================
-
-  async sendPhoneVerification(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { phone } = req.body;
-
-      if (!phone) {
-        return res.status(400).json({
-          success: false,
-          message: 'Numéro de téléphone manquant'
-        });
-      }
-
-      await this.authService.sendPhoneVerification(phone);
-
-      res.status(200).json({
-        success: true,
-        message: 'Code de vérification envoyé par SMS'
-      });
-    } catch (error: any) {
-      next(error);
-    }
-  }
-
-  async verifyPhone(req: Request, res: Response, next: NextFunction) {
-    try {
-      const requiredFields = ['phone', 'code'];
-      const missingFields = getMissingFields(req.body, requiredFields);
-
-      if (missingFields.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Champs manquants',
-          missingFields
-        });
-      }
-
-      const data: VerifyPhoneDTO = {
-        phone: req.body.phone,
-        code: req.body.code
-      };
-
-      await this.authService.verifyPhone(data);
-
-      res.status(200).json({
-        success: true,
-        message: 'Téléphone vérifié avec succès'
-      });
-    } catch (error: any) {
-      next(error);
-    }
-  }
-
-  async resendPhoneVerification(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { phone } = req.body;
-
-      if (!phone) {
-        return res.status(400).json({
-          success: false,
-          message: 'Numéro de téléphone manquant'
-        });
-      }
-
-      await this.authService.resendPhoneVerification(phone);
-
-      res.status(200).json({
-        success: true,
-        message: 'Code de vérification renvoyé par SMS'
-      });
-    } catch (error: any) {
-      next(error);
-    }
-  }
 
   // ==================== PASSWORD RESET ====================
 

@@ -153,6 +153,8 @@ CREATE TABLE refresh_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
     token TEXT NOT NULL UNIQUE,
+    revoked_at TIMESTAMP WITH TIME ZONE,
+    replaced_by TEXT,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT fk_user
