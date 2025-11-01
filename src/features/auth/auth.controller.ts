@@ -295,7 +295,6 @@ export class AuthController {
   async logoutAllDevices(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user?.id;
-      // const refreshToken = req.cookies.refresh_token || req.body.refresh_token;
 
       if (!userId) {
         return res.status(401).json({
