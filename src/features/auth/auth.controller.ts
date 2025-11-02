@@ -360,10 +360,14 @@ export class AuthController {
 
       res.status(200).json({
         success: true,
-        message: 'Si ce compte existe, vous recevrez un lien/code de réinitialisation'
+        message: 'Vous recevrez un code de réinitialisation',
+        nextAllowedAt: new Date(Date.now() + 60_000)
       });
     } catch (error: any) {
-      next(error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Erreur serveur',
+      })
     }
   }
 

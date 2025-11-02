@@ -355,10 +355,6 @@ export class AuthRepository {
     return res.rows[0] ?? null;
   }
 
-  /**
-   * Incrémente le compteur d'essais pour la cible + canal.
-   * Retourne le nouveau nombre d'essais.
-   */
   async incrementOtpAttempts(target: string, channel: OtpChannel): Promise<number> {
     const normalizedTarget = channel === OtpChannel.EMAIL ? target.toLowerCase() : target;
 
@@ -373,9 +369,6 @@ export class AuthRepository {
     return res.rows[0]?.attempts ?? 0;
   }
 
-  /**
-   * Marque un OTP comme utilisé (consommé).
-   */
   async markOtpAsUsed(target: string, channel: OtpChannel): Promise<void> {
     const normalizedTarget = channel === OtpChannel.EMAIL ? target.toLowerCase() : target;
 
@@ -387,9 +380,6 @@ export class AuthRepository {
     await db.query(query, [normalizedTarget, channel]);
   }
 
-  /**
-   * Supprime un OTP pour la cible + canal.
-   */
   async deleteOtp(target: string, channel: OtpChannel): Promise<void> {
     const normalizedTarget = channel === OtpChannel.EMAIL ? target.toLowerCase() : target;
     const query = `DELETE FROM otp_codes WHERE lower(target) = lower($1) AND channel = $2`;

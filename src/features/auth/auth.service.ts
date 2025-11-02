@@ -374,8 +374,8 @@ export class AuthService {
   }
 
   const lastOtp = await this.repo.findLastOtpByTarget(target, channel);
-  if (lastOtp?.created_at) {
-    const diffMs = Date.now() - new Date(lastOtp.created_at).getTime();
+  if (lastOtp?.updated_at) {
+    const diffMs = Date.now() - new Date(lastOtp.updated_at).getTime();
     const cooldown = 60_000;
     if (diffMs < cooldown) {
       const remaining = Math.ceil((cooldown - diffMs) / 1000);
@@ -404,54 +404,42 @@ export class AuthService {
   }
 }
 
-
-
   async forgotPassword(data: ForgotPasswordDTO): Promise<void> {
-    // Find user
-    const user = await this.repo.findUserByEmailOrPhone(data.identifier);
-
+    const user = await this.repo.findUserByEmailOrPhone(data.identifier); 
     if (!user) {
-      // Don't reveal if user exists
-      return;
+      throw { statusCode: 404, message: 'Utilisateur introuvable' };
+    }
+    const isEmail = /\S+@\S+\.\S+/.test(data.identifier);
+    const lastOtp = await this.repo.findLastOtpByTarget(data.identifier, isEmail ? OtpChannel.EMAIL : OtpChannel.PHONE);
+
+    if (lastOtp?.updated_at) {
+      const diffMs = Date.now() - new Date(lastOtp.updated_at).getTime();
+      const cooldown = 60_000;
+      if (diffMs < cooldown) {
+        const remaining = Math.ceil((cooldown - diffMs) / 1000);
+        throw {
+          statusCode: 429,
+          message: `Veuillez patienter ${remaining} seconde${remaining > 1 ? 's' : ''} avant de renvoyer un OTP.`
+        };
+      }
     }
 
-    // Generate token
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-    // Save token
-    await this.repo.createVerificationToken(
-      user.id,
-      token,
-      VerificationType.PASSWORD_RESET,
-      expiresAt
-    );
-
-    // Determine if identifier is email or phone
-    const isEmail = data.identifier.includes('@');
-
+    const { otp, expiration } = generateOtp();
     if (isEmail) {
-      // Send email
-      const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-      await sendEmail({
-        to: user.email,
-        subject: 'Réinitialisation de mot de passe - TogoLocation',
-        template: 'password-reset',
-        context: {
-          resetUrl,
-          expiresIn: '1 heure'
-        }
+      await this.repo.saveOtp(data.identifier, OtpChannel.EMAIL, otp, expiration, user.id, 'password_reset');
+      await sendOtpEmail(data.identifier, otp, {
+        purpose: 'la réinitialisation de votre mot de passe',
+        minutes: 10,
+        subject: 'Réinitialisation du mot de passe (10 min)'
       });
     } else {
-      // Send SMS with OTP instead of URL
-      const { otp, expiration } = generateOtp();
-      // await this.repo.saveOtp(user.phone, otp, expiration);
-      await sendSMS({
-        to: user.phone,
-        message: `Votre code de réinitialisation TogoLocation: ${otp}. Valide 10 minutes.`
+      await this.repo.saveOtp(data.identifier, OtpChannel.PHONE, otp, expiration, user.id, 'password_reset');
+      await sendSMS({ 
+        to: data.identifier, 
+        message: `Votre code de réinitialisation de mot de passe TogoLocation : ${otp}. Valide 10 minutes.` 
       });
     }
-  }
+  }  
 
   async resetPassword(data: ResetPasswordDTO): Promise<void> {
     // Find token
