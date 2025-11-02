@@ -67,7 +67,7 @@ export class AuthRepository {
   async updateUserPassword(userId: string, hashedPassword: string): Promise<void> {
     const query = `
       UPDATE users 
-      SET password = $1, updated_at = NOW() 
+      SET password_hash = $1, updated_at = NOW() 
       WHERE id = $2
     `;
     await db.query(query, [hashedPassword, userId]);

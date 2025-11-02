@@ -102,6 +102,8 @@ export class AuthService {
         if (existingPhone) throw { statusCode: 400, message: 'Ce numéro de téléphone est déjà utilisé' };
       }
 
+      await this.validatePassword(data.password!);
+
       const hashedPassword = await hashPassword(data.password!);
       const role_id = await this.repo.getOrCreateRole(RoleType.TENANT, 'Locataire');
 
@@ -392,14 +394,14 @@ export class AuthService {
 
   if (channel === OtpChannel.EMAIL) {
     await sendOtpEmail(target, otp, {
-      purpose: 'votre code de vérification',
+      purpose: 'votre code de vérification/reinitialisation',
       minutes: 10,
-      subject: 'Votre code de vérification (10 min)'
+      subject: 'Votre code de vérification/reinitialisation (10 min)'
     });
   } else if (channel === OtpChannel.PHONE) {
     await sendSMS({
       to: target,
-      message: `Votre code de vérification TogoLocation : ${otp}. Valide 10 minutes.`
+      message: `Votre code de vérification/reinitialisation ahoe : ${otp}. Valide 10 minutes.`
     });
   }
 }
@@ -441,42 +443,53 @@ export class AuthService {
     }
   }  
 
-  async resetPassword(data: ResetPasswordDTO): Promise<void> {
-    // Find token
-    const tokenRecord = await this.repo.findVerificationToken(
-      data.token,
-      VerificationType.PASSWORD_RESET
-    );
+  async resetPassword(identifier: string, code: string, new_password: string): Promise<void> {
 
-    if (!tokenRecord) {
-      throw { statusCode: 400, message: 'Lien de réinitialisation invalide ou expiré' };
+    const isEmail = /\S+@\S+\.\S+/.test(identifier);
+    const channel = isEmail ? OtpChannel.EMAIL : OtpChannel.PHONE;
+    const target = isEmail ? identifier.toLowerCase().trim() : identifier.trim();
+
+    const user = await this.repo.findUserByEmailOrPhone(identifier);
+    if (!user) {
+      throw { statusCode: 404, message: 'Utilisateur introuvable' };
     }
 
-    // Validate new password
-    await this.validatePassword(data.new_password);
-
-    // Hash new password
-    const hashedPassword = await hashPassword(data.new_password);
-
-    // Update password
-    await this.repo.updateUserPassword(tokenRecord.user_id, hashedPassword);
-
-    // Mark token as used
-    await this.repo.markTokenAsUsed(tokenRecord.id);
-
-    // Revoke all refresh tokens (force re-login everywhere)
-    await this.repo.revokeAllUserTokens(tokenRecord.user_id);
-
-    // Send confirmation email
-    const user = await this.repo.findUserById(tokenRecord.user_id);
-    if (user) {
-      await sendEmail({
-        to: user.email,
-        subject: 'Mot de passe modifié - TogoLocation',
-        template: 'password-changed',
-        context: {}
-      });
+    const otpRecord = await this.repo.findOtp(target, channel);
+    if (!otpRecord) {
+      throw { statusCode: 400, message: 'Code OTP invalide ou expiré' };
     }
+
+    if (otpRecord.purpose && otpRecord.purpose !== 'password_reset') {
+      throw { statusCode: 400, message: 'OTP non valide pour la réinitialisation du mot de passe' };
+    }
+
+    if (otpRecord.attempts >= otpRecord.max_attempts) {
+      await this.repo.deleteOtp(target, channel);
+      throw { statusCode: 429, message: 'Trop de tentatives. Demandez un nouveau code' };
+    }
+
+    if (otpRecord.code !== code) {
+      const attempts = await this.repo.incrementOtpAttempts(target, channel);
+      const remaining = Math.max(0, otpRecord.max_attempts - attempts);
+      throw { statusCode: 400, message: `Code incorrect. ${remaining} tentatives restantes` };
+    }
+
+    await this.validatePassword(new_password);
+
+    if (user.password_hash) {
+      const isSame = await comparePassword(new_password, user.password_hash);
+      if (isSame) {
+        throw { statusCode: 400, message: 'Le nouveau mot de passe doit être différent de l\'ancien' };
+      }
+    }
+
+    await this.repo.markOtpAsUsed(target, channel);
+
+    const hashed = await hashPassword(new_password);
+    await this.repo.updateUserPassword(user.id, hashed);
+
+    await this.repo.revokeAllUserTokens(user.id);
+
   }
 
   async changePassword(userId: string, data: ChangePasswordDTO): Promise<void> {

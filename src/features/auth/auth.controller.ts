@@ -12,6 +12,7 @@ import {
 } from './auth.model';
 import { getMissingFields } from '../../shared/utils/validators';
 import { id } from 'zod/v4/locales';
+import { Identity } from 'twilio/lib/twiml/VoiceResponse';
 
 export class AuthController {
   private authService: AuthService;
@@ -373,7 +374,7 @@ export class AuthController {
 
   async resetPassword(req: Request, res: Response, next: NextFunction) {
     try {
-      const requiredFields = ['token', 'new_password'];
+      const requiredFields = ['identifier', 'code', 'new_password'];
       const missingFields = getMissingFields(req.body, requiredFields);
 
       if (missingFields.length > 0) {
@@ -384,19 +385,19 @@ export class AuthController {
         });
       }
 
-      const data: ResetPasswordDTO = {
-        token: req.body.token,
-        new_password: req.body.new_password
-      };
+      const { identifier, code, new_password } = req.body;
 
-      await this.authService.resetPassword(data);
+      await this.authService.resetPassword(identifier, code, new_password);
 
       res.status(200).json({
         success: true,
-        message: 'Mot de passe réinitialisé avec succès'
+        message: 'Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter.'
       });
     } catch (error: any) {
-      next(error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Erreur serveur'
+      });
     }
   }
 
