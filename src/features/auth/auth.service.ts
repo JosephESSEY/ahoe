@@ -2,34 +2,26 @@ import { AuthRepository } from './auth.repository';
 import {
   RegisterDTO,
   LoginDTO,
-  SocialAuthDTO,
-  VerifyEmailDTO,
-  VerifyPhoneDTO,
   ForgotPasswordDTO,
-  ResetPasswordDTO,
   ChangePasswordDTO,
   TokenResponse,
   User,
   UserStatus,
   RoleType,
-  VerificationType,
   OtpChannel
 } from './auth.model';
 import {
   hashPassword,
   comparePassword,
-  generateSalt
 } from '../../shared/utils/password.utils';
 import {
   generateAccessToken,
   generateRefreshToken,
-  verifyAccessToken,
   verifyRefreshToken
 } from '../../shared/utils/jwt.utils';
 import { generateOtp } from '../../shared/utils/generateOtp.utils';
 import { sendEmail, sendWelcomeEmail, sendOtpEmail } from '../../shared/utils/sendEmail';
 import { sendSMS } from '../../shared/utils/sendSms';
-import crypto from 'crypto';
 
 import { generateAuthTokens } from './helpers/generateAuthTokens.helper';
 import { Permission } from '../../shared/permissions/permissions';
