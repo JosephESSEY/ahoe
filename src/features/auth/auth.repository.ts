@@ -341,6 +341,20 @@ export class AuthRepository {
     return res.rows[0] || null;
   }
 
+   async findLastOtpByTarget(target: string, channel: OtpChannel): Promise<OtpCode | null> {
+    const normalizedTarget = channel === OtpChannel.EMAIL ? target.toLowerCase().trim() : target.trim();
+
+    const q = `
+      SELECT *
+      FROM otp_codes
+      WHERE lower(target) = lower($1) AND channel = $2
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    const res = await db.query(q, [normalizedTarget, channel]);
+    return res.rows[0] ?? null;
+  }
+
   /**
    * Incrémente le compteur d'essais pour la cible + canal.
    * Retourne le nouveau nombre d'essais.

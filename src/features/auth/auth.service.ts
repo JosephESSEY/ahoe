@@ -133,9 +133,9 @@ export class AuthService {
       }
 
       if (!user.email_verified && method === 'email' && data.email) {
-        return { success: true, message: 'Un OTP vous a été envoyé. Veuillez le valider.' };
+        return { success: true, message: 'Un OTP vous a été envoyé. Veuillez le valider.', nextAllowedAt: new Date(Date.now() + 60_000) };
       }else if( !user.phone_verified && method === 'phone' && data.phone){
-        return { success: true, message: 'Un OTP vous a été envoyé. Veuillez le valider.' };
+        return { success: true, message: 'Un OTP vous a été envoyé. Veuillez le valider.', nextAllowedAt: new Date(Date.now() + 60_000) };
       }else{
         const tokens = generateAuthTokens(user);
         await this.repo.saveRefreshToken(user.id, tokens.refresh_token, tokens.expiresAt);
@@ -144,9 +144,6 @@ export class AuthService {
 
     }
   }
-
-
-  // ==================== LOGIN ====================
 
   async login(data: LoginDTO, metadata: {
     ip_address: string;
@@ -317,8 +314,6 @@ export class AuthService {
     }
   }
 
-  // ==================== TOKEN MANAGEMENT ====================
-
   async refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
 
     const decoded = verifyRefreshToken(refreshToken);
@@ -367,24 +362,49 @@ export class AuthService {
     await this.repo.revokeAllUserTokens(userId);
   }
 
-  // ==================== EMAIL VERIFICATION ====================
+  async resendOtp(userId: string, channel: OtpChannel): Promise<void> {
+  const user = await this.repo.findUserById(userId);
+  if (!user) {
+    throw { statusCode: 404, message: 'Utilisateur introuvable.' };
+  }
+
+  const target = channel === OtpChannel.EMAIL ? user.email : user.phone;
+  if (!target) {
+    throw { statusCode: 400, message: `L'utilisateur n'a pas de ${channel === OtpChannel.EMAIL ? 'email' : 'téléphone'} enregistré.` };
+  }
+
+  const lastOtp = await this.repo.findLastOtpByTarget(target, channel);
+  if (lastOtp?.created_at) {
+    const diffMs = Date.now() - new Date(lastOtp.created_at).getTime();
+    const cooldown = 60_000;
+    if (diffMs < cooldown) {
+      const remaining = Math.ceil((cooldown - diffMs) / 1000);
+      throw {
+        statusCode: 429,
+        message: `Veuillez patienter ${remaining} seconde${remaining > 1 ? 's' : ''} avant de renvoyer un OTP.`
+      };
+    }
+  }
+
+  const { otp, expiration } = generateOtp();
+
+  await this.repo.saveOtp(target, channel, otp, expiration, userId);
+
+  if (channel === OtpChannel.EMAIL) {
+    await sendOtpEmail(target, otp, {
+      purpose: 'votre code de vérification',
+      minutes: 10,
+      subject: 'Votre code de vérification (10 min)'
+    });
+  } else if (channel === OtpChannel.PHONE) {
+    await sendSMS({
+      to: target,
+      message: `Votre code de vérification TogoLocation : ${otp}. Valide 10 minutes.`
+    });
+  }
+}
 
 
-  // async resendEmailVerification(userId: string): Promise<void> {
-  //   const user = await this.repo.findUserById(userId);
-
-  //   if (!user) {
-  //     throw { statusCode: 404, message: 'Utilisateur introuvable' };
-  //   }
-
-  //   if (user.email_verified) {
-  //     throw { statusCode: 400, message: 'Email déjà vérifié' };
-  //   }
-
-  //   await this.sendEmailVerification(userId, user.email);
-  // }
-
-  // ==================== PASSWORD RESET ====================
 
   async forgotPassword(data: ForgotPasswordDTO): Promise<void> {
     // Find user

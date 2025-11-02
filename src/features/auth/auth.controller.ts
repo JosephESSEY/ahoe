@@ -11,6 +11,7 @@ import {
   ChangePasswordDTO
 } from './auth.model';
 import { getMissingFields } from '../../shared/utils/validators';
+import { id } from 'zod/v4/locales';
 
 export class AuthController {
   private authService: AuthService;
@@ -312,35 +313,35 @@ export class AuthController {
         message: 'Déconnexion de tous les appareils réussie'
       });
     } catch (error: any) {
-      next(error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Erreur serveur',
+      });
     }
   }
 
- 
-  // async resendEmailVerification(req: Request, res: Response, next: NextFunction) {
-  //   try {
-  //     const userId = req.user?.id;
-
-  //     if (!userId) {
-  //       return res.status(401).json({
-  //         success: false,
-  //         message: 'Non authentifié'
-  //       });
-  //     }
-
-  //     await this.authService.resendEmailVerification(userId);
-
-  //     res.status(200).json({
-  //       success: true,
-  //       message: 'Email de vérification renvoyé'
-  //     });
-  //   } catch (error: any) {
-  //     next(error);
-  //   }
-  // }
-
-
-  // ==================== PASSWORD RESET ====================
+  async resendOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { user_id, channel } = req.body;
+      if (!channel || !user_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'channel et le id du user sont requis'
+        });
+      }
+      await this.authService.resendOtp(user_id, channel);
+      res.status(200).json({
+        success: true,
+        message: 'OTP renvoyé avec succès',
+        nextAllowedAt: new Date(Date.now() + 60_000)
+      });
+    } catch (error: any) {
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Erreur serveur',
+      });
+    }
+  }
 
   async forgotPassword(req: Request, res: Response, next: NextFunction) {
     try {
