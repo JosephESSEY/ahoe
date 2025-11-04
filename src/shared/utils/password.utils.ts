@@ -17,3 +17,10 @@ export const comparePassword = async (
 export const generateSalt = async (): Promise<string> => {
   return await bcrypt.genSalt(SALT_ROUNDS);
 };
+
+export const generatePassword = (): string => {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+';
+    let pwd = '';
+    for (let i = 0; i < 12; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+    return pwd;
+  }

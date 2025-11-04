@@ -230,4 +230,120 @@ export const sendOtpEmail = async (
     console.error('OTP email sending failed:', err);
     throw new Error('Échec d\'envoi de l\'OTP');
   }
+}
+
+/* helper générique pour invitations de rôle (super admin / admin / autre) */
+async function sendRoleInviteEmail(
+  to: string,
+  rawPassword: string,
+  roleLabel: string,
+  options?: { otp?: string; appUrl?: string; supportEmail?: string; subject?: string }
+): Promise<void> {
+  try {
+    const appUrl = escapeHtml(options?.appUrl ?? process.env.APP_URL ?? 'https://ahoe.tg');
+    const supportEmail = escapeHtml(options?.supportEmail ?? process.env.SUPPORT_EMAIL ?? 'support@ahoe.tg');
+    const safePwd = escapeHtml(rawPassword);
+    const otp = options?.otp ? escapeHtml(options.otp) : null;
+    const year = new Date().getFullYear();
+    const subject = options?.subject ?? `Ahoé — Accès ${roleLabel} créé`;
+
+    const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <style>
+    body{margin:0;padding:0;background:#f6f7fb;font-family:Arial,Helvetica,sans-serif;color:#111}
+    .wrap{padding:28px 12px}
+    .card{max-width:640px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;border:1px solid #eceff4}
+    .brand{display:inline-block;padding:6px 14px;border-radius:20px;background:#eef2ff;color:#2b22d8;font-weight:700}
+    h1{font-size:20px;margin:18px 0 6px}
+    p{color:#334155;line-height:1.5}
+    .cred{display:block;padding:14px 18px;background:#0f172a;color:#fff;border-radius:8px;font-weight:800;font-size:16px;text-align:center;margin:16px 0}
+    .note{font-size:13px;color:#6b7280;margin-top:10px}
+    .cta{display:inline-block;margin-top:18px;padding:10px 20px;background:#0f172a;color:#fff;text-decoration:none;border-radius:8px;font-weight:700}
+    .footer{font-size:12px;color:#9aa0ab;margin-top:18px;text-align:center}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" role="article" aria-label="Invitation ${escapeHtml(roleLabel)}">
+      <div style="text-align:center"><span class="brand">Ahoé</span></div>
+
+      <h1>Accès ${escapeHtml(roleLabel)} créé</h1>
+
+      <p>Bonjour,</p>
+
+      <p>Un compte ${escapeHtml(roleLabel)} a été créé pour l'adresse <strong>${escapeHtml(to)}</strong>. Vous pouvez vous connecter en utilisant le mot de passe temporaire ci‑dessous :</p>
+
+      <div class="cred" aria-hidden="true">${safePwd}</div>
+
+      ${otp ? `<p class="note">Un code de vérification (OTP) vous sera envoyé à votre adresse email lors de votre première tentative de connexion : <strong>${otp}</strong></p>` : `<p class="note">Un code de vérification (OTP) vous sera envoyé à votre adresse email lors de votre première tentative de connexion.</p>`}
+
+      <p>Après connexion et vérification de votre email, vous serez invité à compléter votre profil et à définir un nouveau mot de passe.</p>
+
+      <p style="text-align:center">
+        <a class="cta" href="${appUrl}">Aller sur Ahoé</a>
+      </p>
+
+      <p class="note">Pour des raisons de sécurité, changez ce mot de passe dès votre première connexion.</p>
+
+      <div class="footer">
+        Support : <a href="mailto:${supportEmail}">${supportEmail}</a> • © ${year} Ahoé
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`.trim();
+
+    const text = [
+      `Accès ${roleLabel} créé`,
+      ``,
+      `Bonjour,`,
+      ``,
+      `Un compte ${roleLabel} a été créé pour : ${to}`,
+      ``,
+      `Mot de passe temporaire : ${rawPassword}`,
+      otp ? `Code OTP : ${options?.otp}` : `Un OTP sera envoyé lors de votre première connexion.`,
+      ``,
+      `Connectez-vous : ${appUrl}`,
+      ``,
+      `Changez votre mot de passe dès la première connexion.`,
+      ``,
+      `Support: ${supportEmail}`,
+      `© ${year} Ahoé`
+    ].join('\n');
+
+    await transporter.sendMail({
+      from: `"Ahoé" <${process.env.SMTP_FROM || 'noreply@ahoe.tg'}>`,
+      to,
+      subject,
+      text,
+      html
+    });
+
+    console.log(`${roleLabel} invite email sent to ${to}`);
+  } catch (err) {
+    console.error(`${roleLabel} invite email sending failed:`, err);
+    throw new Error(`Échec d'envoi de l'email d'invitation ${roleLabel}`);
+  }
+}
+
+/* wrappers existants utilisant helper */
+export const sendSuperAdminInviteEmail = async (
+  to: string,
+  rawPassword: string,
+  options?: { otp?: string; appUrl?: string; supportEmail?: string }
+): Promise<void> => {
+  return sendRoleInviteEmail(to, rawPassword, 'Super Admin', options);
+};
+
+export const sendAdminInviteEmail = async (
+  to: string,
+  rawPassword: string,
+  options?: { otp?: string; appUrl?: string; supportEmail?: string }
+): Promise<void> => {
+  return sendRoleInviteEmail(to, rawPassword, 'Admin', options);
 };

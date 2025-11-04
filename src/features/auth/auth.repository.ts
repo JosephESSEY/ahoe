@@ -149,7 +149,6 @@ export class AuthRepository {
     await db.query(query, [status, userId]);
   }
 
-  // ==================== USER PROFILES ====================
 
   async createUserProfile(userId: string, data: RegisterDTO): Promise<UserProfile> {
     const query = `
@@ -253,12 +252,6 @@ export class AuthRepository {
     );
   }
   // ==================== OTP CODES ====================
-  
-  /**
-   * Sauvegarde / met à jour un OTP pour une cible (email ou phone).
-   * Si un enregistrement existe pour (lower(target), channel) on le met à jour (reset attempts),
-   * sinon on l'insère.
-   */
   async saveOtp(
     target: string,
     channel: OtpChannel,
@@ -268,7 +261,6 @@ export class AuthRepository {
     purpose: string = 'verification',
     maxAttempts: number = 5,
   ): Promise<OtpCode> {
-    // Normalize target for emails
     const normalizedTarget = channel === OtpChannel.EMAIL ? target.toLowerCase() : target;
 
     const updateQuery = `

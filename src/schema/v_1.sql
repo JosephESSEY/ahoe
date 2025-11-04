@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS login_history (
 );
 
 INSERT INTO roles (role_name, role_description)
-VALUES ('super_admin', 'Administrateur principal avec tous les accès')
+VALUES ('super_admin', 'Administrateur principal with all permissions')
 ON CONFLICT (role_name) DO NOTHING;
 
 INSERT INTO permission (permission_name)
